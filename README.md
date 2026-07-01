@@ -79,10 +79,10 @@ From here you can:
 
 | Role | Access |
 |---|---|
-| `hall_office` | Upload roll numbers CSV, create/manage staff accounts |
-| `mess_staff` | Manage extras items, view bookings, edit weekly menu, enter wastage |
-| `mess_worker` | QR scanner, today's booking queue |
-| `student` | View dashboard (wastage + menu), browse/book extras, booking history + QR |
+| `hall_office` | Upload roll numbers CSV, create/manage staff accounts, post notices |
+| `mess_staff` | Manage extras items, view bookings, edit weekly menu, enter wastage, post notices, download CSV reports |
+| `mess_worker` | QR scanner (with audio feedback), today's booking queue |
+| `student` | View dashboard (wastage, menu, notices), browse/book extras, booking history + QR |
 
 ## Project Structure
 
@@ -123,6 +123,14 @@ See `PROJECT.md` for the full API specification. Key route groups:
 - `/staff/*` — Item CRUD, bookings list, menu editor, wastage
 - `/worker/*` — QR scan, today's queue
 - `/hall-office/*` — CSV upload, staff accounts
+- `/notices` — View and post announcements
+
+## Recent Features
+- **Notice Board**: Hall Office and Mess Staff can post real-time announcements visible on the student dashboard.
+- **Auto-Routed Auth Emails**: Students only provide their roll number at sign up; the system automatically derives `<roll_no>@iitk.ac.in`.
+- **CSV Reports**: Mess staff can download date-filtered CSV reports of student extra consumption.
+- **Scanner Audio**: Mess workers get instant audible feedback (success/error chimes) upon scanning a QR code.
+- **Access Revocation Sync**: Removing a student from the Allowed Roll Number list instantly deactivates their account without destroying historical purchase data.
 
 ## Notes
 

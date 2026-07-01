@@ -112,6 +112,20 @@ def upload_roll_numbers(
             )
         )
 
+    # Sync User table for students
+    active_roll_nos = [row["roll_no"] for row in unique_rolls]
+    # Deactivate removed students
+    db.query(User).filter(
+        User.role == UserRole.student,
+        User.identifier.notin_(active_roll_nos)
+    ).update({"is_active": False}, synchronize_session=False)
+    
+    # Reactivate existing students who are in the new list
+    db.query(User).filter(
+        User.role == UserRole.student,
+        User.identifier.in_(active_roll_nos)
+    ).update({"is_active": True}, synchronize_session=False)
+
     db.commit()
 
     return RollNumberUploadResponse(
@@ -154,6 +168,13 @@ def add_roll_number(
         uploaded_by=current_user.id,
     )
     db.add(new_roll)
+
+    # Sync User table: Reactivate if the user account already exists
+    db.query(User).filter(
+        User.identifier == body.roll_no, 
+        User.role == UserRole.student
+    ).update({"is_active": True}, synchronize_session=False)
+
     db.commit()
     db.refresh(new_roll)
     return new_roll
@@ -172,6 +193,13 @@ def delete_roll_number(
             detail="Roll number not found.",
         )
     db.delete(roll)
+
+    # Sync User table: Deactivate user if they exist
+    db.query(User).filter(
+        User.identifier == roll_no, 
+        User.role == UserRole.student
+    ).update({"is_active": False}, synchronize_session=False)
+
     db.commit()
     return {"message": "Roll number deleted successfully."}
 
