@@ -58,6 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           identifier: "",
           name: "",
           role: payload.role,
+          email: null,
+          roll_no: null,
+          room_no: null,
         });
       } catch {
         // No valid refresh token — user needs to log in

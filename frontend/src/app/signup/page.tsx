@@ -11,6 +11,7 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/Toast";
+import type { LoginResponse } from "@/types";
 
 type Step = "details" | "otp" | "password";
 
@@ -100,10 +101,7 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      const data = await apiFetch<{
-        access_token: string;
-        user: { id: number; identifier: string; name: string; role: string };
-      }>("/auth/signup/set-password", {
+      const data = await apiFetch<LoginResponse>("/auth/signup/set-password", {
         method: "POST",
         body: JSON.stringify({
           signup_token: signupToken,
@@ -115,15 +113,7 @@ export default function SignupPage() {
         skipAuth: true,
       });
 
-      setUser(
-        {
-          id: data.user.id,
-          identifier: data.user.identifier,
-          name: data.user.name,
-          role: data.user.role as "student",
-        },
-        data.access_token
-      );
+      setUser(data.user, data.access_token);
 
       toast("Account created! Welcome to Hall 12.", "success");
       router.push("/student/dashboard");
