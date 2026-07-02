@@ -130,6 +130,11 @@ export default function LoginPage() {
             Sign up here
           </Link>
         </p>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-text-muted mt-8 opacity-75">
+          made with ❤️ by your mess & canteen secretary
+        </p>
       </div>
     </div>
   );

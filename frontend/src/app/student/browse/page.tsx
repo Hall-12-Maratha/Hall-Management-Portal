@@ -163,7 +163,7 @@ export default function BrowsePage() {
           />
 
           {/* Modal */}
-          <div className="relative w-full max-w-sm mx-4 mb-4 sm:mb-0 glass-card p-6 rounded-2xl animate-fade-in">
+          <div className="relative w-full max-w-sm mx-4 mb-24 sm:mb-0 glass-card p-6 rounded-2xl animate-fade-in">
             <h2 className="text-base font-bold text-text-primary mb-1">
               {bookingItem.name}
             </h2>

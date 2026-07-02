@@ -112,19 +112,21 @@ def upload_roll_numbers(
             )
         )
 
-    # Sync User table for students
-    active_roll_nos = [row["roll_no"] for row in unique_rolls]
-    # Deactivate removed students
-    db.query(User).filter(
-        User.role == UserRole.student,
-        User.identifier.notin_(active_roll_nos)
-    ).update({"is_active": False}, synchronize_session=False)
+    # Sync User table for students using emails
+    active_emails = [row["email"].lower() for row in unique_rolls if row["email"]]
     
-    # Reactivate existing students who are in the new list
-    db.query(User).filter(
-        User.role == UserRole.student,
-        User.identifier.in_(active_roll_nos)
-    ).update({"is_active": True}, synchronize_session=False)
+    if active_emails:
+        # Deactivate removed students
+        db.query(User).filter(
+            User.role == UserRole.student,
+            User.identifier.notin_(active_emails)
+        ).update({"is_active": False}, synchronize_session=False)
+        
+        # Reactivate existing students who are in the new list
+        db.query(User).filter(
+            User.role == UserRole.student,
+            User.identifier.in_(active_emails)
+        ).update({"is_active": True}, synchronize_session=False)
 
     db.commit()
 
@@ -170,10 +172,11 @@ def add_roll_number(
     db.add(new_roll)
 
     # Sync User table: Reactivate if the user account already exists
-    db.query(User).filter(
-        User.identifier == body.roll_no, 
-        User.role == UserRole.student
-    ).update({"is_active": True}, synchronize_session=False)
+    if body.email:
+        db.query(User).filter(
+            User.identifier == body.email.lower(), 
+            User.role == UserRole.student
+        ).update({"is_active": True}, synchronize_session=False)
 
     db.commit()
     db.refresh(new_roll)
@@ -195,10 +198,11 @@ def delete_roll_number(
     db.delete(roll)
 
     # Sync User table: Deactivate user if they exist
-    db.query(User).filter(
-        User.identifier == roll_no, 
-        User.role == UserRole.student
-    ).update({"is_active": False}, synchronize_session=False)
+    if roll.email:
+        db.query(User).filter(
+            User.identifier == roll.email.lower(), 
+            User.role == UserRole.student
+        ).update({"is_active": False}, synchronize_session=False)
 
     db.commit()
     return {"message": "Roll number deleted successfully."}
