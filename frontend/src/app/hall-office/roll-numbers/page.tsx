@@ -151,7 +151,11 @@ export default function RollNumbersPage() {
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="w-full text-sm text-text-secondary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-white file:cursor-pointer hover:file:bg-accent-hover"
             />
-            <p className="text-xs mt-2 text-text-muted">Format: Roll No, Name, Email, Room Number</p>
+            <p className="text-xs mt-2 text-text-muted">
+              CSV must have exactly 4 columns in this exact order: <br/>
+              <span className="font-mono text-text-secondary">Roll No, Name, Email, Room Number</span> <br/>
+              (No headers required)
+            </p>
           </div>
           <button
             onClick={handleUpload}

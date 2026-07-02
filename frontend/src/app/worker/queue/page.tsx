@@ -30,7 +30,9 @@ export default function QueuePage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchQueue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleMarkServed = async (qrToken: string, id: number) => {

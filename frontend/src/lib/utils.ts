@@ -29,6 +29,7 @@ export function getDayName(dayOfWeek: number, short = false): string {
 export function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-IN", {
+    weekday: "short",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -41,6 +42,7 @@ export function formatDate(dateStr: string): string {
 export function formatDateTime(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleString("en-IN", {
+    weekday: "short",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -50,10 +52,22 @@ export function formatDateTime(dateStr: string): string {
 }
 
 /**
- * Format a time string "HH:MM:SS" to "h:mm a" (12-hour).
+ * Format a time string "HH:MM:SS" or ISO datetime string to "h:mm a" (12-hour).
  */
 export function formatTime(timeStr: string): string {
-  const [hours, minutes] = timeStr.split(":").map(Number);
+  if (!timeStr) return "";
+  
+  let hours, minutes;
+  if (timeStr.includes("T")) {
+    const d = new Date(timeStr);
+    hours = d.getHours();
+    minutes = d.getMinutes();
+  } else {
+    const parts = timeStr.split(":");
+    hours = Number(parts[0]);
+    minutes = Number(parts[1]);
+  }
+  
   const period = hours >= 12 ? "PM" : "AM";
   const h = hours % 12 || 12;
   return `${h}:${minutes.toString().padStart(2, "0")} ${period}`;

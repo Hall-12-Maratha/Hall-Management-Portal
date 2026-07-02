@@ -26,6 +26,8 @@ class VerifyOTPRequest(BaseModel):
 
 class VerifyOTPResponse(BaseModel):
     signup_token: str
+    name: str | None = None
+    room_no: str | None = None
     message: str = "OTP verified. Set your password."
 
 
@@ -33,6 +35,14 @@ class SetPasswordRequest(BaseModel):
     """Step 3: student sets their password after OTP verification."""
     signup_token: str
     password: str = Field(..., min_length=8, max_length=128)
+    name: str = Field(..., min_length=1, max_length=255)
+    room_no: str | None = Field(None, max_length=50)
+
+
+class ChangePasswordRequest(BaseModel):
+    """Authenticated user changing their password."""
+    old_password: str
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
 # ---------------------------------------------------------------------------

@@ -38,7 +38,7 @@ def seed_hall_office():
             name="Hall Office Admin",
             is_active=True,
             password_set=True,
-            must_change_password=False,
+            must_change_password=True,
         )
         db.add(user)
         db.commit()

@@ -18,6 +18,7 @@ from app.models.allowed_roll import AllowedRollNumber
 from app.models.user import User, UserRole
 from app.schemas.auth import (
     ChangePasswordRequest,
+    ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
     MessageResponse,
@@ -156,10 +157,15 @@ def verify_otp(body: VerifyOTPRequest, db: Session = Depends(get_db)):
     # Clear OTP fields
     user.otp_hash = None
     user.otp_expires_at = None
-    user.otp_attempts = 0
-    db.commit()
+    # Fetch prefill info from AllowedRollNumber if available
+    roll_no = body.roll_no.strip()
+    allowed = db.query(AllowedRollNumber).filter(AllowedRollNumber.roll_no == roll_no).first()
 
-    return VerifyOTPResponse(signup_token=signup_token)
+    return VerifyOTPResponse(
+        signup_token=signup_token,
+        name=allowed.name if allowed else None,
+        room_no=allowed.room_number if allowed else None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -191,9 +197,11 @@ def set_password(body: SetPasswordRequest, response: Response, db: Session = Dep
             detail="Password already set. Please log in.",
         )
 
-    # Set password
+    # Set password, name, and room_no
     user.password_hash = hash_password(body.password)
     user.password_set = True
+    user.name = body.name
+    user.room_no = body.room_no
     db.commit()
 
     # Issue tokens
@@ -205,7 +213,7 @@ def set_password(body: SetPasswordRequest, response: Response, db: Session = Dep
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,  # 7 days
         path="/",
@@ -277,7 +285,7 @@ def login(body: LoginRequest, response: Response, db: Session = Depends(get_db))
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,
         path="/",
@@ -328,7 +336,7 @@ def change_password(body: ChangePasswordRequest, response: Response, db: Session
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,
         path="/",
@@ -393,7 +401,7 @@ def logout(response: Response):
         key="refresh_token",
         path="/",
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
     )
     return MessageResponse(message="Logged out.")

@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
-import { formatTime, formatPrice, getDayName } from "@/lib/utils";
+import { formatTime, formatPrice } from "@/lib/utils";
 import type { ExtrasItem } from "@/types";
 
 export default function StaffItemsPage() {
@@ -16,14 +16,17 @@ export default function StaffItemsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Form state
   const [formName, setFormName] = useState("");
   const [formPrice, setFormPrice] = useState("");
-  const [formOpens, setFormOpens] = useState("18:00");
-  const [formCloses, setFormCloses] = useState("20:00");
+  const [formDate, setFormDate] = useState(new Date().toISOString().slice(0, 10));
+  const [formMealType, setFormMealType] = useState("lunch");
+  const [formCloses, setFormCloses] = useState("14:30");
   const [formRecurring, setFormRecurring] = useState(false);
-  const [formWeekday, setFormWeekday] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [bulkDeleteId, setBulkDeleteId] = useState<number | null>(null);
+  const [bulkDeletePassword, setBulkDeletePassword] = useState("");
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
   const { toast } = useToast();
 
@@ -40,16 +43,18 @@ export default function StaffItemsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resetForm = () => {
     setFormName("");
     setFormPrice("");
-    setFormOpens("18:00");
-    setFormCloses("20:00");
+    setFormDate(new Date().toISOString().slice(0, 10));
+    setFormMealType("lunch");
+    setFormCloses("14:30");
     setFormRecurring(false);
-    setFormWeekday(0);
     setEditingId(null);
     setShowForm(false);
   };
@@ -57,10 +62,17 @@ export default function StaffItemsPage() {
   const openEditForm = (item: ExtrasItem) => {
     setFormName(item.name);
     setFormPrice(String(item.price));
-    setFormOpens(item.opens_at.slice(0, 5));
-    setFormCloses(item.closes_at.slice(0, 5));
+    setFormDate(item.date);
+    setFormMealType(item.meal_type);
+    
+    // Extract HH:MM from ISO string closes_at
+    let closesTime = "14:30";
+    if (item.closes_at) {
+      const d = new Date(item.closes_at);
+      closesTime = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+    }
+    setFormCloses(closesTime);
     setFormRecurring(item.is_recurring);
-    setFormWeekday(item.recurring_weekday || 0);
     setEditingId(item.id);
     setShowForm(true);
   };
@@ -68,13 +80,16 @@ export default function StaffItemsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Construct ISO datetime string for closes_at using local time
+    const closesDt = new Date(`${formDate}T${formCloses}:00`);
+
     const body = {
       name: formName.trim(),
       price: parseFloat(formPrice),
-      opens_at: formOpens + ":00",
-      closes_at: formCloses + ":00",
+      date: formDate,
+      meal_type: formMealType,
+      closes_at: closesDt.toISOString(),
       is_recurring: formRecurring,
-      recurring_weekday: formRecurring ? formWeekday : null,
     };
 
     setIsSubmitting(true);
@@ -114,7 +129,26 @@ export default function StaffItemsPage() {
       toast(error.message || "Failed to delete.", "error");
     }
   };
+  const handleBulkDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkDeleteId) return;
 
+    setIsDeletingBulk(true);
+    try {
+      await apiFetch(`/staff/items/${bulkDeleteId}/bookings/bulk-delete`, {
+        method: "POST",
+        body: JSON.stringify({ password: bulkDeletePassword }),
+      });
+      toast("Bookings deleted successfully.", "success");
+      setBulkDeleteId(null);
+      setBulkDeletePassword("");
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast(error.message || "Failed to bulk delete bookings.", "error");
+    } finally {
+      setIsDeletingBulk(false);
+    }
+  };
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -164,19 +198,30 @@ export default function StaffItemsPage() {
                 required
               />
             </div>
-            <div className="flex gap-2">
               <div className="flex-1">
-                <label className="block text-xs text-text-secondary mb-1">Opens</label>
+                <label className="block text-xs text-text-secondary mb-1">Date</label>
                 <input
-                  type="time"
-                  value={formOpens}
-                  onChange={(e) => setFormOpens(e.target.value)}
+                  type="date"
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary focus:outline-none focus:border-accent input-glow"
                   required
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-text-secondary mb-1">Closes</label>
+                <label className="block text-xs text-text-secondary mb-1">Meal</label>
+                <select
+                  value={formMealType}
+                  onChange={(e) => setFormMealType(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary focus:outline-none focus:border-accent input-glow"
+                >
+                  <option value="breakfast">Breakfast</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="dinner">Dinner</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-text-secondary mb-1">Closes At</label>
                 <input
                   type="time"
                   value={formCloses}
@@ -185,7 +230,6 @@ export default function StaffItemsPage() {
                   required
                 />
               </div>
-            </div>
           </div>
 
           {/* Recurring */}
@@ -197,21 +241,8 @@ export default function StaffItemsPage() {
                 onChange={(e) => setFormRecurring(e.target.checked)}
                 className="accent-accent w-4 h-4"
               />
-              <span className="text-sm text-text-secondary">Recurring weekly</span>
+              <span className="text-sm text-text-secondary">Recurring weekly on this date&apos;s weekday</span>
             </label>
-            {formRecurring && (
-              <select
-                value={formWeekday}
-                onChange={(e) => setFormWeekday(parseInt(e.target.value))}
-                className="px-3 py-1.5 rounded-lg bg-bg-elevated border border-border text-sm text-text-primary focus:outline-none focus:border-accent"
-              >
-                {[0, 1, 2, 3, 4, 5, 6].map((d) => (
-                  <option key={d} value={d}>
-                    {getDayName(d)}
-                  </option>
-                ))}
-              </select>
-            )}
           </div>
 
           <div className="flex gap-3">
@@ -268,11 +299,8 @@ export default function StaffItemsPage() {
                   )}
                 </div>
                 <p className="text-xs text-text-muted">
-                  {formatTime(item.opens_at)} – {formatTime(item.closes_at)} ·{" "}
-                  {item.prep_time_mins} min prep
-                  {item.is_recurring && item.recurring_weekday != null
-                    ? ` · Recurring ${getDayName(item.recurring_weekday)}`
-                    : ""}
+                  {item.date} · {item.meal_type.toUpperCase()} · Book by: {formatTime(item.closes_at)}
+                  {item.is_recurring ? ` · Recurring` : ""}
                 </p>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
@@ -283,16 +311,58 @@ export default function StaffItemsPage() {
                   Edit
                 </button>
                 {item.is_active && (
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="px-2.5 py-1.5 rounded-lg border border-error/30 text-error text-xs hover:bg-error-bg transition-colors"
-                  >
-                    Delete
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="px-2.5 py-1.5 rounded-lg border border-error/30 text-error text-xs hover:bg-error-bg transition-colors"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setBulkDeleteId(item.id)}
+                      className="px-2.5 py-1.5 rounded-lg border border-warning/30 text-warning text-xs hover:bg-warning-bg transition-colors"
+                    >
+                      Clear Bookings
+                    </button>
+                  </>
                 )}
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {/* Bulk Delete Modal */}
+      {bulkDeleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setBulkDeleteId(null)} />
+          <form onSubmit={handleBulkDelete} className="relative glass-card p-6 rounded-2xl w-full max-w-sm">
+            <h2 className="text-lg font-bold text-text-primary mb-2">Bulk Delete Bookings</h2>
+            <p className="text-sm text-text-muted mb-4">Enter your password to confirm clearing all bookings for this item. This action cannot be undone.</p>
+            <input
+              type="password"
+              placeholder="Your Password"
+              value={bulkDeletePassword}
+              onChange={(e) => setBulkDeletePassword(e.target.value)}
+              required
+              className="w-full px-3 py-2 mb-4 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary focus:outline-none focus:border-warning input-glow"
+            />
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setBulkDeleteId(null)}
+                className="flex-1 py-2 rounded-xl border border-border text-text-secondary text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isDeletingBulk}
+                className="flex-1 py-2 rounded-xl bg-warning hover:bg-warning/80 text-white text-sm font-bold disabled:opacity-50"
+              >
+                {isDeletingBulk ? "Deleting..." : "Confirm"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

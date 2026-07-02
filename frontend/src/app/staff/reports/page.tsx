@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { apiFetchBlob } from "@/lib/api";
 
 export default function StaffReportsPage() {
   const [startDate, setStartDate] = useState("");
@@ -22,20 +23,7 @@ export default function StaffReportsPage() {
 
     setIsDownloading(true);
     try {
-      const token = localStorage.getItem("access_token");
-      const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/staff/reports/extras/export?start_date=${startDate}&end_date=${endDate}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to download report");
-      }
-
-      const blob = await response.blob();
+      const blob = await apiFetchBlob(`/staff/reports/extras/export?start_date=${startDate}&end_date=${endDate}`);
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;

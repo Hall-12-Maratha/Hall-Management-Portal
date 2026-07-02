@@ -11,16 +11,35 @@ import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import type { ScanResult, ScanSuccess, ScanAlreadyUsed } from "@/types";
 
-// Note: Replace these placeholders with actual base64 audio strings for better sound
-const SUCCESS_BEEP = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABmYWN0BAAAAAAAAABkYXRhAAAAAA==";
-const ERROR_BEEP = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABmYWN0BAAAAAAAAABkYXRhAAAAAA==";
-
-const playSound = (src: string) => {
+const playBeep = (type: "success" | "error") => {
   try {
-    const audio = new Audio(src);
-    audio.play().catch((e) => console.log("Audio play blocked by browser:", e));
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    if (type === "success") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.5, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.1);
+    } else {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      gain.gain.setValueAtTime(0.5, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    }
   } catch (e) {
-    console.error("Failed to play audio", e);
+    console.error("Audio playback failed", e);
   }
 };
 
@@ -63,14 +82,14 @@ export default function ScanPage() {
         setScanResult(result);
 
         if ("already_served" in result && result.already_served) {
-          playSound(ERROR_BEEP);
+          playBeep("error");
           toast("This QR code was already used.", "warning");
         } else {
-          playSound(SUCCESS_BEEP);
+          playBeep("success");
           toast("Marked as served!", "success");
         }
       } catch (err: unknown) {
-        playSound(ERROR_BEEP);
+        playBeep("error");
         const error = err as Error & { status?: number };
         if (error.status === 404) {
           toast("QR code not recognized.", "error");

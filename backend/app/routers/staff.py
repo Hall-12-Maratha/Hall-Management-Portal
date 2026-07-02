@@ -2,9 +2,11 @@
 Staff router — extras item CRUD, booking views, wastage management.
 """
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timezone, timedelta
 import csv
 import io
+
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -22,6 +24,9 @@ from app.schemas.extras import (
     StaffBookingResponse,
 )
 from app.schemas.wastage import WastageCreate, WastageResponse
+
+class BulkDeleteRequest(BaseModel):
+    password: str
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 
@@ -48,16 +53,18 @@ def create_item(
     current_user: User = Depends(require_role("mess_staff")),
     db: Session = Depends(get_db),
 ):
-    prep_time = _compute_prep_time(body.opens_at, body.closes_at)
+    opens_at = body.closes_at - timedelta(hours=48)
+    prep_time = _compute_prep_time(opens_at.time(), body.closes_at.time())
 
     item = ExtrasItem(
         name=body.name,
         price=body.price,
-        opens_at=body.opens_at,
+        date=body.date,
+        meal_type=body.meal_type,
+        opens_at=opens_at,
         closes_at=body.closes_at,
         prep_time_mins=prep_time,
         is_recurring=body.is_recurring,
-        recurring_weekday=body.recurring_weekday if body.is_recurring else None,
         is_active=True,
         created_by=current_user.id,
     )
@@ -94,19 +101,20 @@ def update_item(
         item.name = body.name
     if body.price is not None:
         item.price = body.price
-    if body.opens_at is not None:
-        item.opens_at = body.opens_at
+    if body.date is not None:
+        item.date = body.date
+    if body.meal_type is not None:
+        item.meal_type = body.meal_type
     if body.closes_at is not None:
         item.closes_at = body.closes_at
+        item.opens_at = item.closes_at - timedelta(hours=48)
     if body.is_recurring is not None:
         item.is_recurring = body.is_recurring
-    if body.recurring_weekday is not None:
-        item.recurring_weekday = body.recurring_weekday
     if body.is_active is not None:
         item.is_active = body.is_active
 
     # Recompute prep time
-    item.prep_time_mins = _compute_prep_time(item.opens_at, item.closes_at)
+    item.prep_time_mins = _compute_prep_time(item.opens_at.time(), item.closes_at.time())
 
     db.commit()
     db.refresh(item)
@@ -137,23 +145,77 @@ def delete_item(
 # View all bookings (mess_staff)
 # ---------------------------------------------------------------------------
 
+@router.delete("/bookings/{booking_id}")
+def delete_booking_staff(
+    booking_id: int,
+    current_user: User = Depends(require_role("mess_staff")),
+    db: Session = Depends(get_db),
+):
+    booking = db.query(ExtrasBooking).filter(ExtrasBooking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    
+    db.delete(booking)
+    db.commit()
+    return {"message": "Booking deleted."}
+
+@router.post("/bookings/{booking_id}/serve")
+def serve_booking_staff(
+    booking_id: int,
+    current_user: User = Depends(require_role("mess_staff")),
+    db: Session = Depends(get_db),
+):
+    booking = db.query(ExtrasBooking).filter(ExtrasBooking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    
+    if booking.status in (BookingStatus.cancelled, BookingStatus.cancel_requested):
+        raise HTTPException(status_code=400, detail="Cannot serve a cancelled booking.")
+        
+    booking.status = BookingStatus.served
+    booking.qr_used_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"message": "Booking marked as served."}
+
+@router.post("/items/{item_id}/bookings/bulk-delete")
+def bulk_delete_bookings(
+    item_id: int,
+    body: BulkDeleteRequest,
+    current_user: User = Depends(require_role("mess_staff")),
+    db: Session = Depends(get_db),
+):
+    from app.services.auth_service import verify_password
+    if not verify_password(body.password, current_user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid password.")
+        
+    bookings = db.query(ExtrasBooking).filter(ExtrasBooking.item_id == item_id).all()
+    count = len(bookings)
+    for b in bookings:
+        db.delete(b)
+    db.commit()
+    return {"message": f"Deleted {count} bookings."}
+
 @router.get("/bookings", response_model=list[StaffBookingResponse])
 def list_all_bookings(
     filter_date: date | None = Query(None, alias="date"),
     item_id: int | None = Query(None),
+    search: str | None = Query(None),
     current_user: User = Depends(require_role("mess_staff")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(ExtrasBooking).order_by(ExtrasBooking.booked_at.desc())
+    query = db.query(ExtrasBooking).join(User, ExtrasBooking.student_id == User.id).join(ExtrasItem, ExtrasBooking.item_id == ExtrasItem.id).order_by(ExtrasBooking.booked_at.desc())
 
     if filter_date:
-        query = query.filter(
-            ExtrasBooking.booked_at >= datetime.combine(filter_date, time.min),
-            ExtrasBooking.booked_at <= datetime.combine(filter_date, time.max),
-        )
+        query = query.filter(ExtrasItem.date == filter_date)
 
     if item_id:
         query = query.filter(ExtrasBooking.item_id == item_id)
+        
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (User.name.ilike(search_term)) | (User.identifier.ilike(search_term))
+        )
 
     bookings = query.all()
 
@@ -165,12 +227,16 @@ def list_all_bookings(
             StaffBookingResponse(
                 id=b.id,
                 student_identifier=student.identifier if student else "Unknown",
+                student_name=student.name if student else "Unknown",
                 item_name=item.name if item else "Unknown",
+                item_date=item.date if item else None,
+                meal_type=item.meal_type.value if item else "Unknown",
                 qty=b.qty,
                 total_price=b.total_price,
                 status=b.status.value,
                 booked_at=b.booked_at,
                 qr_used_at=b.qr_used_at,
+                closes_at=item.closes_at if item else datetime.now(timezone.utc),
             )
         )
 
@@ -188,15 +254,17 @@ def export_extras_csv(
         db.query(
             User.identifier.label("roll_no"),
             User.name.label("name"),
+            User.room_no.label("room_no"),
             func.sum(ExtrasBooking.total_price).label("total_amount")
         )
         .join(ExtrasBooking, User.id == ExtrasBooking.student_id)
+        .join(ExtrasItem, ExtrasBooking.item_id == ExtrasItem.id)
         .filter(
-            ExtrasBooking.booked_at >= datetime.combine(start_date, time.min),
-            ExtrasBooking.booked_at <= datetime.combine(end_date, time.max),
+            ExtrasItem.date >= start_date,
+            ExtrasItem.date <= end_date,
             ExtrasBooking.status == BookingStatus.served
         )
-        .group_by(User.identifier, User.name)
+        .group_by(User.identifier, User.name, User.room_no)
         .order_by(User.identifier)
     )
 
@@ -204,10 +272,10 @@ def export_extras_csv(
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Roll Number", "Name", "Total Extras Amount"])
+    writer.writerow(["Roll Number", "Name", "Room Number", "Total Extras Amount"])
 
     for row in results:
-        writer.writerow([row.roll_no, row.name, f"{row.total_amount:.2f}"])
+        writer.writerow([row.roll_no, row.name, row.room_no or "", f"{row.total_amount:.2f}"])
 
     output.seek(0)
     return StreamingResponse(

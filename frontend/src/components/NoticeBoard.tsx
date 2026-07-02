@@ -26,15 +26,17 @@ export default function NoticeBoard() {
     try {
       const data = await apiFetch<NoticeResponse[]>("/notices");
       setNotices(data);
-    } catch (err: any) {
-      toast("Failed to load notices", "error");
+    } catch (err: unknown) {
+      toast((err as Error).message || "Failed to load notices", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePost = async (e: React.FormEvent) => {
@@ -56,8 +58,8 @@ export default function NoticeBoard() {
       setLink("");
       setIsPosting(false);
       fetchNotices();
-    } catch (err: any) {
-      toast(err.message || "Failed to post notice", "error");
+    } catch (err: unknown) {
+      toast((err as Error).message || "Failed to post notice", "error");
     }
   };
 
@@ -67,8 +69,8 @@ export default function NoticeBoard() {
       await apiFetch(`/notices/${id}`, { method: "DELETE" });
       toast("Notice deleted", "success");
       fetchNotices();
-    } catch (err: any) {
-      toast(err.message || "Failed to delete notice", "error");
+    } catch (err: unknown) {
+      toast((err as Error).message || "Failed to delete notice", "error");
     }
   };
 

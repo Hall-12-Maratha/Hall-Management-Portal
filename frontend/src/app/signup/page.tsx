@@ -21,6 +21,8 @@ export default function SignupPage() {
   const [signupToken, setSignupToken] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  const [roomNo, setRoomNo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { setUser } = useAuth();
@@ -58,7 +60,7 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      const data = await apiFetch<{ signup_token: string }>(
+      const data = await apiFetch<{ signup_token: string; name?: string; room_no?: string }>(
         "/auth/signup/verify-otp",
         {
           method: "POST",
@@ -70,6 +72,8 @@ export default function SignupPage() {
         }
       );
       setSignupToken(data.signup_token);
+      if (data.name) setName(data.name);
+      if (data.room_no) setRoomNo(data.room_no);
       toast("OTP verified!", "success");
       setStep("password");
     } catch (err: unknown) {
@@ -102,6 +106,8 @@ export default function SignupPage() {
         body: JSON.stringify({
           signup_token: signupToken,
           password,
+          name: name.trim() || rollNo.trim(),
+          room_no: roomNo.trim() || null,
         }),
         skipAuth: true,
       });
@@ -252,11 +258,38 @@ export default function SignupPage() {
         {step === "password" && (
           <form
             onSubmit={handleSetPassword}
-            className="glass-card p-6 space-y-5 animate-fade-in"
+            className="glass-card p-6 space-y-4 animate-fade-in"
           >
-            <p className="text-sm text-text-secondary text-center">
-              Set a password for your account.
+            <p className="text-sm text-text-secondary text-center mb-2">
+              Complete your profile and set a password.
             </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your Name"
+                  className="w-full px-3 py-2.5 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent input-glow transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                  Room Number
+                </label>
+                <input
+                  type="text"
+                  value={roomNo}
+                  onChange={(e) => setRoomNo(e.target.value)}
+                  placeholder="e.g. A-101"
+                  className="w-full px-3 py-2.5 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent input-glow transition-colors"
+                />
+              </div>
+            </div>
             <div>
               <label
                 htmlFor="new-password"

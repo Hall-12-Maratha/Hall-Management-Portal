@@ -3,11 +3,12 @@ Extras items and bookings models.
 """
 
 import enum
-from datetime import datetime, time
+from datetime import datetime, time, date
 from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -22,14 +23,22 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
+class MealType(str, enum.Enum):
+    breakfast = "breakfast"
+    lunch = "lunch"
+    dinner = "dinner"
+
+
 class ExtrasItem(Base):
     __tablename__ = "extras_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    opens_at: Mapped[time] = mapped_column(Time, nullable=False)
-    closes_at: Mapped[time] = mapped_column(Time, nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    meal_type: Mapped[MealType] = mapped_column(Enum(MealType), nullable=False)
+    opens_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    closes_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     prep_time_mins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -52,6 +61,9 @@ class ExtrasItem(Base):
 class BookingStatus(str, enum.Enum):
     booked = "booked"
     served = "served"
+    missed = "missed"
+    cancelled = "cancelled"
+    cancel_requested = "cancel_requested"
 
 
 class ExtrasBooking(Base):

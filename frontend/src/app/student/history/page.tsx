@@ -8,6 +8,7 @@ import React, { useEffect, useState } from "react";
 import { apiFetch, apiFetchBlob } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { formatDateTime, formatPrice } from "@/lib/utils";
+import Image from "next/image";
 import type { Booking, BookingListResponse } from "@/types";
 
 export default function HistoryPage() {
@@ -52,6 +53,32 @@ export default function HistoryPage() {
     setQrImageUrl(null);
   };
 
+  const handleCancel = async (bookingId: number) => {
+    if (!confirm("Are you sure you want to cancel this booking?")) return;
+    try {
+      await apiFetch(`/bookings/${bookingId}`, { method: "DELETE" });
+      toast("Booking cancelled successfully.", "success");
+      const data = await apiFetch<BookingListResponse>("/bookings/me");
+      setBookings(data.bookings);
+      setRunningTotal(data.running_total);
+    } catch (err: unknown) {
+      toast((err as Error).message || "Failed to cancel booking.", "error");
+    }
+  };
+
+  const handleRequestCancel = async (bookingId: number) => {
+    if (!confirm("The booking window has closed. Do you want to request the mess staff to cancel it?")) return;
+    try {
+      await apiFetch(`/bookings/${bookingId}/request-cancel`, { method: "POST" });
+      toast("Cancellation requested.", "success");
+      const data = await apiFetch<BookingListResponse>("/bookings/me");
+      setBookings(data.bookings);
+      setRunningTotal(data.running_total);
+    } catch (err: unknown) {
+      toast((err as Error).message || "Failed to request cancellation.", "error");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-3 animate-subtle-pulse">
@@ -84,40 +111,73 @@ export default function HistoryPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {bookings.map((b) => (
             <div
               key={b.id}
-              className="glass-card p-3.5 rounded-xl flex items-center justify-between gap-3"
+              className="relative overflow-hidden glass-card p-5 rounded-2xl flex items-center justify-between gap-4 border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 group"
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h3 className="text-sm font-semibold text-text-primary truncate">
+              {b.status === "booked" && (
+                <div className="absolute -right-10 -top-10 w-32 h-32 bg-accent/10 rounded-full blur-3xl pointer-events-none group-hover:bg-accent/20 transition-colors" />
+              )}
+              
+              <div className="flex-1 min-w-0 relative z-10">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-lg font-bold text-text-primary truncate">
                     {b.item_name}
                   </h3>
                   <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    className={`text-[10px] font-black px-2 py-1 rounded-lg tracking-wider ${
                       b.status === "booked"
-                        ? "bg-accent-bg text-accent"
-                        : "bg-success-bg text-success"
+                        ? "bg-accent/20 text-accent border border-accent/20"
+                        : b.status === "cancelled" || b.status === "cancel_requested" 
+                        ? "bg-error/20 text-error border border-error/20"
+                        : "bg-success/20 text-success border border-success/20"
                     }`}
                   >
                     {b.status.toUpperCase()}
                   </span>
                 </div>
-                <p className="text-xs text-text-muted">
-                  {b.qty}× · {formatPrice(b.total_price)} ·{" "}
-                  {formatDateTime(b.booked_at)}
-                </p>
+                
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-text-secondary">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span className="text-text-primary">{b.qty}</span> Portion{b.qty > 1 ? 's' : ''}
+                  </div>
+                  <div className="w-1 h-1 rounded-full bg-border" />
+                  <div className="font-bold text-accent">
+                    {formatPrice(b.total_price)}
+                  </div>
+                  <div className="w-1 h-1 rounded-full bg-border" />
+                  <div className="text-xs text-text-muted">
+                    {new Date(b.booked_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
               </div>
 
               {b.status === "booked" && (
-                <button
-                  onClick={() => showQR(b.id)}
-                  className="px-3 py-1.5 rounded-lg border border-accent/30 text-accent text-xs font-semibold hover:bg-accent-bg transition-colors flex-shrink-0"
-                >
-                  QR
-                </button>
+                <div className="flex flex-col gap-2 flex-shrink-0 relative z-10">
+                  <button
+                    onClick={() => showQR(b.id)}
+                    className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold shadow-lg shadow-accent/20 transition-all hover:scale-105 active:scale-95"
+                  >
+                    Show QR
+                  </button>
+                  {new Date() < new Date(b.closes_at) ? (
+                    <button
+                      onClick={() => handleCancel(b.id)}
+                      className="px-4 py-2 rounded-xl border border-error/30 text-error text-xs font-bold hover:bg-error/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleRequestCancel(b.id)}
+                      className="px-4 py-2 rounded-xl border border-warning/30 text-warning text-xs font-bold hover:bg-warning/10 transition-colors"
+                    >
+                      Req Cancel
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ))}

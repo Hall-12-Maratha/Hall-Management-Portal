@@ -1,46 +1,110 @@
 "use client";
 
-/**
- * Student profile page — basic info + logout.
- */
-
-import React from "react";
-import { useAuth } from "@/lib/auth";
+import React, { useState } from "react";
+import { apiFetch } from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast("New passwords do not match.", "error");
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      toast("Password must be at least 8 characters.", "error");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await apiFetch("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({
+          old_password: oldPassword,
+          new_password: newPassword,
+        }),
+      });
+      toast("Password changed successfully!", "success");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast(error.message || "Failed to change password.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="max-w-sm mx-auto">
-      <h1 className="text-lg font-bold text-text-primary mb-6">Profile</h1>
-
-      <div className="glass-card p-5 rounded-xl space-y-4">
-        <div>
-          <p className="text-xs text-text-muted mb-0.5">Name</p>
-          <p className="text-sm font-medium text-text-primary">
-            {user?.name || "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-text-muted mb-0.5">Email / ID</p>
-          <p className="text-sm font-medium text-text-primary">
-            {user?.identifier || "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-text-muted mb-0.5">Role</p>
-          <p className="text-sm font-medium text-accent capitalize">
-            {user?.role.replace("_", " ") || "—"}
-          </p>
-        </div>
+    <div className="max-w-md mx-auto space-y-6">
+      <h1 className="text-xl font-bold text-text-primary">Profile</h1>
+      
+      <div className="glass-card p-6 space-y-5 rounded-xl">
+        <h2 className="text-sm font-bold text-text-secondary uppercase tracking-wider">
+          Change Password
+        </h2>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1.5">
+              Current Password
+            </label>
+            <input
+              type="password"
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent input-glow transition-colors"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1.5">
+              New Password
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent input-glow transition-colors"
+              required
+              minLength={8}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-text-secondary mb-1.5">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent input-glow transition-colors"
+              required
+              minLength={8}
+            />
+          </div>
+          
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-sm transition-colors disabled:opacity-50 mt-4"
+          >
+            {isSubmitting ? "Updating..." : "Update Password"}
+          </button>
+        </form>
       </div>
-
-      <button
-        onClick={logout}
-        className="w-full mt-6 py-2.5 rounded-xl border border-error/30 text-error text-sm font-semibold hover:bg-error-bg transition-colors"
-      >
-        Logout
-      </button>
     </div>
   );
 }

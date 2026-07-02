@@ -79,6 +79,20 @@ export default function StaffAccountsPage() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this staff account?")) return;
+    try {
+      await apiFetch(`/hall-office/staff/${id}`, {
+        method: "DELETE",
+      });
+      toast("Account deleted.", "success");
+      fetchStaff();
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast(error.message || "Failed to delete account.", "error");
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast("Copied to clipboard!", "info");
@@ -230,16 +244,24 @@ export default function StaffAccountsPage() {
                     {s.identifier} · Created {formatDateTime(s.created_at)}
                   </p>
                 </div>
-                <button
-                  onClick={() => toggleActive(s.id, s.is_active)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    s.is_active
-                      ? "bg-success-bg text-success hover:bg-success/20"
-                      : "bg-error-bg text-error hover:bg-error/20"
-                  }`}
-                >
-                  {s.is_active ? "Active" : "Inactive"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleActive(s.id, s.is_active)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      s.is_active
+                        ? "bg-success-bg text-success hover:bg-success/20"
+                        : "bg-error-bg text-error hover:bg-error/20"
+                    }`}
+                  >
+                    {s.is_active ? "Active" : "Inactive"}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(s.id)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-error-bg text-error hover:bg-error/20 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

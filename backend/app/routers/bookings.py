@@ -2,9 +2,10 @@
 Bookings router — student creates bookings, views history, gets QR images.
 """
 
+from datetime import datetime, timezone
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response as RawResponse
 from sqlalchemy.orm import Session
 
@@ -70,6 +71,7 @@ def create_booking(
         status=booking.status.value,
         qr_token=booking.qr_token,
         booked_at=booking.booked_at,
+        closes_at=item.closes_at,
     )
 
 
@@ -105,9 +107,11 @@ def get_my_bookings(
                 qr_token=b.qr_token,
                 booked_at=b.booked_at,
                 qr_used_at=b.qr_used_at,
+                closes_at=item.closes_at if item else b.booked_at,
             )
         )
-        running_total += float(b.total_price)
+        if b.status not in (BookingStatus.cancelled, BookingStatus.cancel_requested):
+            running_total += float(b.total_price)
 
     return BookingListResponse(
         bookings=result,
@@ -146,3 +150,80 @@ def get_booking_qr(
         media_type="image/png",
         headers={"Cache-Control": "no-store"},
     )
+# ---------------------------------------------------------------------------
+# Modify / Cancel / Request Cancel
+# ---------------------------------------------------------------------------
+
+@router.put("/{booking_id}")
+def modify_booking(
+    booking_id: int,
+    qty: int = Query(..., ge=1, le=10),
+    current_user: User = Depends(require_role("student")),
+    db: Session = Depends(get_db),
+):
+    booking = db.query(ExtrasBooking).filter(
+        ExtrasBooking.id == booking_id, 
+        ExtrasBooking.student_id == current_user.id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+        
+    item = booking.item
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    # Check if window is open
+    if now >= item.closes_at:
+        raise HTTPException(status_code=400, detail="Booking window has closed.")
+        
+    booking.qty = qty
+    booking.total_price = item.price * qty
+    db.commit()
+    db.refresh(booking)
+    
+    return {"message": "Booking modified successfully.", "new_qty": qty, "new_total": booking.total_price}
+
+@router.delete("/{booking_id}")
+def cancel_booking(
+    booking_id: int,
+    current_user: User = Depends(require_role("student")),
+    db: Session = Depends(get_db),
+):
+    booking = db.query(ExtrasBooking).filter(
+        ExtrasBooking.id == booking_id, 
+        ExtrasBooking.student_id == current_user.id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+        
+    item = booking.item
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    if now >= item.closes_at:
+        raise HTTPException(status_code=400, detail="Booking window has closed. Use request cancellation instead.")
+        
+    booking.status = BookingStatus.cancelled
+    db.commit()
+    return {"message": "Booking cancelled."}
+
+@router.post("/{booking_id}/request-cancel")
+def request_cancel_booking(
+    booking_id: int,
+    current_user: User = Depends(require_role("student")),
+    db: Session = Depends(get_db),
+):
+    booking = db.query(ExtrasBooking).filter(
+        ExtrasBooking.id == booking_id, 
+        ExtrasBooking.student_id == current_user.id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+        
+    if booking.status != BookingStatus.booked:
+        raise HTTPException(status_code=400, detail="Cannot request cancellation for this booking.")
+        
+    booking.status = BookingStatus.cancel_requested
+    db.commit()
+    return {"message": "Cancellation requested."}

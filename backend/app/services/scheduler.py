@@ -13,7 +13,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models.extras import ExtrasItem
+from app.models.extras import ExtrasItem, ExtrasBooking, BookingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -34,23 +34,27 @@ def recreate_recurring_items() -> None:
             db.query(ExtrasItem)
             .filter(
                 ExtrasItem.is_recurring.is_(True),
-                ExtrasItem.recurring_weekday == today_weekday,
+                ExtrasItem.date < today_date, # Only look at past templates
                 ExtrasItem.is_active.is_(True),
             )
             .all()
         )
 
         for template in recurring_items:
+            # We assume it recurrs every 7 days.
+            # Calculate the next occurrence date
+            days_diff = (today_date - template.date).days
+            if days_diff <= 0 or days_diff % 7 != 0:
+                continue
+
             # Check if already created today
             existing_today = (
                 db.query(ExtrasItem)
                 .filter(
                     ExtrasItem.name == template.name,
                     ExtrasItem.is_active.is_(True),
-                    ExtrasItem.created_at >= datetime.combine(
-                        today_date,
-                        datetime.min.time(),
-                    ),
+                    ExtrasItem.date == today_date,
+                    ExtrasItem.meal_type == template.meal_type,
                 )
                 .first()
             )
@@ -62,14 +66,22 @@ def recreate_recurring_items() -> None:
                 continue
 
             # Clone the template as a new item for today
+            # We copy opens_at and closes_at relative to the new date
+            time_diff = template.closes_at - template.opens_at
+            
+            # Keep the same time, but change the date
+            new_closes_at = datetime.combine(today_date, template.closes_at.time())
+            new_opens_at = new_closes_at - time_diff
+
             new_item = ExtrasItem(
                 name=template.name,
                 price=template.price,
-                opens_at=template.opens_at,
-                closes_at=template.closes_at,
+                date=today_date,
+                meal_type=template.meal_type,
+                opens_at=new_opens_at,
+                closes_at=new_closes_at,
                 prep_time_mins=template.prep_time_mins,
                 is_recurring=False,  # The clone is not itself recurring
-                recurring_weekday=None,
                 is_active=True,
                 created_by=template.created_by,
             )
@@ -84,6 +96,44 @@ def recreate_recurring_items() -> None:
         db.close()
 
 
+def mark_missed_bookings() -> None:
+    """
+    Mark bookings as missed if they are still 'booked' and the meal window has passed.
+    We assume the meal is definitively over 4 hours after the booking closing time.
+    """
+    db: Session = SessionLocal()
+    try:
+        from datetime import timedelta
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        # Find bookings where item closes_at was more than 4 hours ago and status is 'booked'
+        cutoff_time = now - timedelta(hours=4)
+        
+        overdue_bookings = (
+            db.query(ExtrasBooking)
+            .join(ExtrasItem)
+            .filter(
+                ExtrasBooking.status == BookingStatus.booked,
+                ExtrasItem.closes_at < cutoff_time
+            )
+            .all()
+        )
+        
+        count = 0
+        for booking in overdue_bookings:
+            booking.status = BookingStatus.missed
+            count += 1
+            
+        if count > 0:
+            logger.info(f"Marked {count} bookings as missed.")
+            db.commit()
+            
+    except Exception:
+        db.rollback()
+        logger.exception("Error in mark_missed_bookings job")
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     """Start the background scheduler with the recurring items job."""
     scheduler.add_job(
@@ -91,6 +141,13 @@ def start_scheduler() -> None:
         "interval",
         hours=1,
         id="recreate_recurring_items",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        mark_missed_bookings,
+        "interval",
+        hours=1,
+        id="mark_missed_bookings",
         replace_existing=True,
     )
     scheduler.start()

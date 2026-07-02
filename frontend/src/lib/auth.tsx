@@ -16,7 +16,6 @@ import { apiFetch, setAccessToken } from "@/lib/api";
 import type {
   LoginResult,
   UserBrief,
-  isMustChangePassword,
 } from "@/types";
 
 interface AuthState {

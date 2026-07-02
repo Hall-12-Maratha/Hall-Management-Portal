@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
-import { formatTime, formatPrice } from "@/lib/utils";
+import { formatTime, formatPrice, formatDate } from "@/lib/utils";
 import type { Booking, ExtrasItem } from "@/types";
 
 export default function BrowsePage() {
@@ -69,6 +69,21 @@ export default function BrowsePage() {
     );
   }
 
+  // Group items by date, then by meal_type
+  const groupedItems = items.reduce((acc, item) => {
+    if (!acc[item.date]) {
+      acc[item.date] = {};
+    }
+    const meal = item.meal_type || "Other";
+    if (!acc[item.date][meal]) {
+      acc[item.date][meal] = [];
+    }
+    acc[item.date][meal].push(item);
+    return acc;
+  }, {} as Record<string, Record<string, ExtrasItem[]>>);
+
+  const sortedDates = Object.keys(groupedItems).sort();
+
   return (
     <div>
       <h1 className="text-lg font-bold text-text-primary mb-4">
@@ -82,33 +97,56 @@ export default function BrowsePage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="glass-card p-4 rounded-xl flex items-center justify-between gap-3"
-            >
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-text-primary truncate">
-                  {item.name}
-                </h3>
-                <p className="text-xs text-text-muted mt-0.5">
-                  {formatTime(item.opens_at)} – {formatTime(item.closes_at)}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-sm font-bold text-accent">
-                  {formatPrice(item.price)}
-                </span>
-                <button
-                  onClick={() => {
-                    setBookingItem(item);
-                    setQty(1);
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold transition-colors"
-                >
-                  Book
-                </button>
+        <div className="space-y-6">
+          {sortedDates.map((dateStr) => (
+            <div key={dateStr} className="space-y-4">
+              <h2 className="text-md font-bold text-text-secondary border-b border-border pb-1">
+                {formatDate(dateStr)}
+              </h2>
+              <div className="space-y-5">
+                {["breakfast", "lunch", "dinner"].map((meal) => {
+                  const mealItems = groupedItems[dateStr][meal];
+                  if (!mealItems || mealItems.length === 0) return null;
+
+                  return (
+                    <div key={meal} className="space-y-2 pl-2">
+                      <h3 className="text-sm font-semibold text-accent uppercase tracking-wider">
+                        {meal}
+                      </h3>
+                      <div className="space-y-2">
+                        {mealItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="glass-card p-4 rounded-xl flex items-center justify-between gap-3"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-semibold text-text-primary truncate">
+                                {item.name}
+                              </h3>
+                              <p className="text-xs text-text-muted mt-0.5">
+                                Book by: {formatTime(item.closes_at)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              <span className="text-sm font-bold text-text-primary">
+                                {formatPrice(item.price)}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setBookingItem(item);
+                                  setQty(1);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white text-xs font-semibold transition-colors"
+                              >
+                                Book
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}

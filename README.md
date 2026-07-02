@@ -71,7 +71,7 @@ Use the seeded hall_office admin account:
 > ⚠️ Change this password in production.
 
 From here you can:
-1. Upload a student roll number CSV
+1. Upload a student roll number CSV (with Name and Room Number)
 2. Create mess_staff and mess_worker accounts
 3. Log into those accounts (forced password change on first login)
 
@@ -127,10 +127,12 @@ See `PROJECT.md` for the full API specification. Key route groups:
 
 ## Recent Features
 - **Notice Board**: Hall Office and Mess Staff can post real-time announcements visible on the student dashboard.
-- **Auto-Routed Auth Emails**: Students only provide their roll number at sign up; the system automatically derives `<roll_no>@iitk.ac.in`.
-- **CSV Reports**: Mess staff can download date-filtered CSV reports of student extra consumption.
+- **Room Number & Identity Tracking**: Automated sync between Hall Office CSV bulk-uploads and student self-registration to prefill Name and Room Numbers.
+- **CSV Reports & Billing**: Mess staff can download date-filtered CSV reports of student extra consumption (including Room Numbers and total calculated costs).
+- **Advanced Booking Dashboard**: Mess staff have real-time views of active open bookings and finalized preparation targets, filterable by Meal Type and Status.
 - **Scanner Audio**: Mess workers get instant audible feedback (success/error chimes) upon scanning a QR code.
 - **Access Revocation Sync**: Removing a student from the Allowed Roll Number list instantly deactivates their account without destroying historical purchase data.
+- **Full Account Management**: Hall office can create/deactivate/delete staff accounts, and force password resets.
 
 ## Notes
 

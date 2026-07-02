@@ -35,8 +35,10 @@ export interface ExtrasItem {
   id: number;
   name: string;
   price: number;
-  opens_at: string; // "HH:MM:SS"
-  closes_at: string;
+  date: string;
+  meal_type: string;
+  opens_at: string; // ISO datetime
+  closes_at: string; // ISO datetime
   prep_time_mins: number;
   is_recurring: boolean;
   recurring_weekday: number | null;
@@ -51,10 +53,11 @@ export interface Booking {
   item_name: string;
   qty: number;
   total_price: number;
-  status: "booked" | "served";
+  status: "booked" | "served" | "missed" | "cancelled" | "cancel_requested";
   qr_token: string;
   booked_at: string;
   qr_used_at: string | null;
+  closes_at: string;
 }
 
 export interface BookingListResponse {
@@ -65,12 +68,16 @@ export interface BookingListResponse {
 export interface StaffBooking {
   id: number;
   student_identifier: string;
+  student_name: string;
   item_name: string;
+  item_date: string | null;
+  meal_type: string;
   qty: number;
   total_price: number;
-  status: "booked" | "served";
+  status: "booked" | "served" | "missed" | "cancelled" | "cancel_requested";
   booked_at: string;
   qr_used_at: string | null;
+  closes_at: string;
 }
 
 // ─── Menu ──────────────────────────────────────────────

@@ -302,3 +302,33 @@ def toggle_staff_status(
     db.commit()
 
     return {"message": f"Account {'activated' if body.is_active else 'deactivated'}."}
+
+
+# ---------------------------------------------------------------------------
+# Delete staff account
+# ---------------------------------------------------------------------------
+
+@router.delete("/staff/{user_id}")
+def delete_staff_account(
+    user_id: int,
+    current_user: User = Depends(require_role("hall_office")),
+    db: Session = Depends(get_db),
+):
+    user = (
+        db.query(User)
+        .filter(
+            User.id == user_id,
+            User.role.in_([UserRole.mess_staff, UserRole.mess_worker]),
+        )
+        .first()
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff account not found.",
+        )
+
+    db.delete(user)
+    db.commit()
+
+    return {"message": "Staff account deleted successfully."}
