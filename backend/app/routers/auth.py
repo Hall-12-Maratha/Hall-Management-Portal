@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, Request, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
+
 from app.dependencies import (
     check_login_rate_limit,
     check_otp_rate_limit,
@@ -140,8 +142,8 @@ def setup_complete(body: SetupCompleteRequest, response: Response, db: Session =
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
         max_age=7 * 24 * 60 * 60,  # 7 days
         path="/",
     )
@@ -269,8 +271,8 @@ def forgot_password_reset(body: ForgotPasswordReset, response: Response, db: Ses
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
         max_age=7 * 24 * 60 * 60,  # 7 days
         path="/",
     )
@@ -344,8 +346,8 @@ def login(body: LoginRequest, response: Response, db: Session = Depends(get_db))
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
         max_age=7 * 24 * 60 * 60,
         path="/",
     )
@@ -398,8 +400,8 @@ def change_password(body: ChangePasswordRequest, response: Response, db: Session
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
         max_age=7 * 24 * 60 * 60,
         path="/",
     )
@@ -486,7 +488,7 @@ def logout(response: Response):
         key="refresh_token",
         path="/",
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
     )
     return MessageResponse(message="Logged out.")

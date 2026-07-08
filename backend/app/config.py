@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # Frontend URL (for CORS)
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # Cookie settings for Auth refresh token
+    COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: str = "lax"
+
     # SMTP (optional — console backend used when these are empty)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
