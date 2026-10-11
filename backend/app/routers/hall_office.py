@@ -28,6 +28,12 @@ from app.services.auth_service import generate_temp_password, hash_password
 router = APIRouter(prefix="/hall-office", tags=["hall-office"])
 
 
+def generate_setup_code() -> str:
+    """Generate an eight-character setup code using secure randomness."""
+    chars = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(chars) for _ in range(8))
+
+
 # ---------------------------------------------------------------------------
 # CSV upload - replace mode
 # ---------------------------------------------------------------------------
@@ -191,9 +197,7 @@ def export_setup_codes(
             status = "Pending Setup"
             # Generate setup code if missing
             if not roll.setup_code:
-                # 8 char random alphanumeric
-                chars = string.ascii_uppercase + string.digits
-                roll.setup_code = ''.join(secrets.choice(chars) for _ in range(8))
+                roll.setup_code = generate_setup_code()
                 changed = True
             setup_code = roll.setup_code
             
@@ -246,6 +250,7 @@ def add_roll_number(
         name=body.name,
         email=f"{roll_no.lower()}@iitk.ac.in",
         room_number=body.room_number,
+        setup_code=generate_setup_code(),
         uploaded_by=current_user.id,
     )
     db.add(new_roll)
