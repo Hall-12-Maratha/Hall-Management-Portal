@@ -91,7 +91,7 @@ export default function RollNumbersPage() {
     if (!newRoll.trim()) return;
 
     try {
-      await apiFetch("/hall-office/roll-numbers", {
+      const createdRoll = await apiFetch<AllowedRollResponse>("/hall-office/roll-numbers", {
         method: "POST",
         body: JSON.stringify({
           roll_no: newRoll.trim(),
@@ -105,7 +105,11 @@ export default function RollNumbersPage() {
       setNewName("");
       setNewRoom("");
       setIsAdding(false);
-      fetchRolls();
+      setRolls((currentRolls) => [
+        createdRoll,
+        ...currentRolls.filter((roll) => roll.roll_no !== createdRoll.roll_no),
+      ]);
+      setVisibleOtp(createdRoll.roll_no);
     } catch (err: unknown) {
       const error = err as Error;
       toast(error.message || "Failed to add roll number", "error");

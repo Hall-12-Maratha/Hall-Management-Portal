@@ -3,8 +3,10 @@ Staff router - extras item CRUD, booking views, wastage management.
 """
 
 from datetime import date, datetime, timezone, timedelta
+from decimal import Decimal
 import csv
 import io
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
@@ -38,6 +40,79 @@ router = APIRouter(prefix="/staff", tags=["staff"])
 def _compute_prep_time(opens_at: datetime, closes_at: datetime) -> int:
     """Compute prep time in minutes from open→close times."""
     return max(int((closes_at - opens_at).total_seconds() // 60), 0)
+
+
+def _build_extras_report_csv(
+    results: list[tuple[ExtrasBooking, ExtrasItem, User]],
+    report_type: Literal["detailed", "student"],
+) -> str:
+    """Build a detailed or student-grouped extras report."""
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    if report_type == "student":
+        grouped_students = {}
+        for booking, item, student in results:
+            student_row = grouped_students.setdefault(
+                student.id,
+                {
+                    "roll_number": student.roll_no or student.identifier.split("@")[0],
+                    "name": student.name,
+                    "room_number": student.room_no or "",
+                    "booking_count": 0,
+                    "total_quantity": 0,
+                    "total_amount": Decimal("0.00"),
+                    "items": {},
+                },
+            )
+            student_row["booking_count"] += 1
+            student_row["total_quantity"] += booking.qty
+            student_row["total_amount"] += booking.total_price
+            student_row["items"][item.name] = (
+                student_row["items"].get(item.name, 0) + booking.qty
+            )
+
+        writer.writerow([
+            "Roll Number", "Name", "Room Number", "Booking Count",
+            "Total Quantity", "Total Amount (INR)", "Items",
+        ])
+        for student_row in sorted(
+            grouped_students.values(),
+            key=lambda row: str(row["roll_number"]),
+        ):
+            item_summary = "; ".join(
+                f"{item_name} x{quantity}"
+                for item_name, quantity in sorted(student_row["items"].items())
+            )
+            writer.writerow([
+                student_row["roll_number"],
+                student_row["name"],
+                student_row["room_number"],
+                student_row["booking_count"],
+                student_row["total_quantity"],
+                f"{student_row['total_amount']:.2f}",
+                item_summary,
+            ])
+    else:
+        writer.writerow([
+            "Date", "Meal", "Roll Number", "Name", "Room Number",
+            "Item", "Quantity", "Status", "Amount (INR)",
+        ])
+
+        for booking, item, student in results:
+            writer.writerow([
+                item.date,
+                item.meal_type.value.capitalize(),
+                student.roll_no or student.identifier.split("@")[0],
+                student.name,
+                student.room_no or "",
+                item.name,
+                booking.qty,
+                booking.status.value.upper(),
+                f"{booking.total_price:.2f}",
+            ])
+
+    return output.getvalue()
 
 
 # ---------------------------------------------------------------------------
@@ -301,9 +376,16 @@ def list_all_bookings(
 def export_extras_csv(
     start_date: date,
     end_date: date,
+    report_type: Literal["detailed", "student"] = Query("student"),
     current_user: User = Depends(require_role("mess_staff")),
     db: Session = Depends(get_db),
 ):
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Start date cannot be after end date.",
+        )
+
     query = (
         db.query(ExtrasBooking, ExtrasItem, User)
         .join(ExtrasItem, ExtrasBooking.item_id == ExtrasItem.id)
@@ -322,32 +404,15 @@ def export_extras_csv(
 
     results = query.all()
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow([
-        "Date", "Meal", "Roll Number", "Name", "Room Number",
-        "Item", "Quantity", "Status", "Amount (INR)",
-    ])
-
-    for booking, item, student in results:
-        writer.writerow([
-            item.date,
-            item.meal_type.value.capitalize(),
-            student.roll_no or student.identifier.split("@")[0],
-            student.name,
-            student.room_no or "",
-            item.name,
-            booking.qty,
-            booking.status.value.upper(),
-            f"{booking.total_price:.2f}",
-        ])
-
-    output.seek(0)
+    csv_content = _build_extras_report_csv(results, report_type)
     return StreamingResponse(
-        iter([output.getvalue()]),
+        iter([csv_content]),
         media_type="text/csv",
         headers={
-            "Content-Disposition": f"attachment; filename=extras_report_{start_date}_to_{end_date}.csv"
+            "Content-Disposition": (
+                f"attachment; filename=extras_report_{report_type}_"
+                f"{start_date}_to_{end_date}.csv"
+            )
         }
     )
 

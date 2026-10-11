@@ -7,16 +7,16 @@
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
-import { parseApiDate } from "@/lib/utils";
+import { getTodayInIndia, parseApiDate } from "@/lib/utils";
 import type { StaffBooking } from "@/types";
 
 export default function StaffBookingsPage() {
   const [bookings, setBookings] = useState<StaffBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const todayStr = new Date().toISOString().split("T")[0];
-  const tomorrowObj = new Date();
-  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+  const todayStr = getTodayInIndia();
+  const tomorrowObj = new Date(`${todayStr}T00:00:00Z`);
+  tomorrowObj.setUTCDate(tomorrowObj.getUTCDate() + 1);
   const tomorrowStr = tomorrowObj.toISOString().split("T")[0];
   
   const [filterDate, setFilterDate] = useState<string>(todayStr);
@@ -120,8 +120,9 @@ export default function StaffBookingsPage() {
       return;
     }
 
-    const headers = ["Meal", "Item", "Student Name", "Roll No", "Qty", "Status", "Booked At"];
+    const headers = ["Date", "Meal", "Item", "Student Name", "Roll No", "Qty", "Status", "Booked At"];
     const rows = filtered.map((b) => [
+      b.item_date || filterDate,
       b.meal_type,
       b.item_name,
       b.student_name,
@@ -204,7 +205,7 @@ export default function StaffBookingsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 mb-6">
         <div className="flex bg-bg-surface p-1 rounded-xl border border-border w-fit">
           <button
             onClick={() => setFilterDate(todayStr)}
@@ -227,6 +228,17 @@ export default function StaffBookingsPage() {
             Tomorrow
           </button>
         </div>
+
+        <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-bg-surface border border-border text-xs font-semibold text-text-secondary">
+          Date
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+            aria-label="Booking date"
+          />
+        </label>
         
         <div className="flex-1 min-w-[200px] relative">
           <input

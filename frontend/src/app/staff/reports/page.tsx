@@ -7,6 +7,7 @@ import { apiFetchBlob } from "@/lib/api";
 export default function StaffReportsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [reportType, setReportType] = useState<"detailed" | "student">("student");
   const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
 
@@ -23,7 +24,12 @@ export default function StaffReportsPage() {
 
     setIsDownloading(true);
     try {
-      const blob = await apiFetchBlob(`/staff/reports/extras/export?start_date=${startDate}&end_date=${endDate}`);
+      const params = new URLSearchParams({
+        start_date: startDate,
+        end_date: endDate,
+        report_type: reportType,
+      });
+      const blob = await apiFetchBlob(`/staff/reports/extras/export?${params.toString()}`);
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;
@@ -31,7 +37,8 @@ export default function StaffReportsPage() {
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, "0");
       const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-      link.download = `extras_report_${startDate}_to_${endDate}_${ts}.csv`;
+      const reportLabel = reportType === "student" ? "student_wise" : "detailed";
+      link.download = `extras_report_${reportLabel}_${startDate}_to_${endDate}_${ts}.csv`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -57,8 +64,27 @@ export default function StaffReportsPage() {
 
       <div className="glass-card p-6 rounded-xl space-y-5">
         <h2 className="text-sm font-semibold text-text-primary">Extras Consumption Report</h2>
+
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1.5">
+            Report Type
+          </label>
+          <select
+            value={reportType}
+            onChange={(e) => setReportType(e.target.value as "detailed" | "student")}
+            className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+          >
+            <option value="detailed">Detailed Bookings</option>
+            <option value="student">Student Wise Summary</option>
+          </select>
+          <p className="mt-2 text-xs text-text-muted">
+            {reportType === "student"
+              ? "One row per student with booking count, total quantity, amount, and item-wise quantities."
+              : "One row per booking with date, meal, item, quantity, status, and amount."}
+          </p>
+        </div>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1.5">
               Start Date
