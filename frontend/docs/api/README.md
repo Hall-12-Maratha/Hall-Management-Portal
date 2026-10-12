@@ -43,6 +43,7 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 |---|---|---|---|
 | POST | /api/auth/setup/verify | public | [POST_auth-setup-verify.md](auth/POST_auth-setup-verify.md) |
 | POST | /api/auth/setup/complete | public | [POST_auth-setup-complete.md](auth/POST_auth-setup-complete.md) |
+| POST | /api/auth/setup/lookup | public | [POST_auth-setup-lookup.md](auth/POST_auth-setup-lookup.md) |
 | POST | /api/auth/forgot-password/request-otp | public | [POST_auth-forgot-password-request-otp.md](auth/POST_auth-forgot-password-request-otp.md) |
 | POST | /api/auth/forgot-password/verify-otp | public | [POST_auth-forgot-password-verify-otp.md](auth/POST_auth-forgot-password-verify-otp.md) |
 | POST | /api/auth/forgot-password/reset-password | public | [POST_auth-forgot-password-reset-password.md](auth/POST_auth-forgot-password-reset-password.md) |
