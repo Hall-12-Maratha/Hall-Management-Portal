@@ -16,7 +16,7 @@ The app is a single **Next.js full-stack project** in [`frontend/`](frontend/): 
 | Validation | zod |
 | Email | nodemailer (SMTP STARTTLS; console fallback in dev) |
 | QR | `qrcode` for generation, `html5-qrcode` for scanning (behind feature flags) |
-| Jobs | Vercel Cron (daily) + lazy throttled maintenance inside read endpoints |
+| Jobs | No scheduler: maintenance runs lazily (throttled) inside the read endpoints that need it |
 | Hosting | Vercel Hobby (root directory `frontend`) |
 
 ## Architecture
@@ -32,12 +32,10 @@ flowchart TD
         UI[App Router pages\nclient components]
         API[Route handlers /api/*\nzod validation, JWT guards]
         Jobs[Maintenance jobs\nrecurring items, missed bookings]
-        Cron[/api/cron/daily\nVercel Cron, CRON_SECRET/]
     end
 
     UI --> |same-origin fetch\nBearer access token + refresh cookie| API
     API --> |throttled via rate_limits| Jobs
-    Cron --> Jobs
     API <--> |Drizzle ORM| DB[(Supabase Postgres)]
     Jobs <--> DB
     API --> |OTP mail| SMTP[SMTP provider]
@@ -58,7 +56,7 @@ Every former FastAPI endpoint exists at the same path with an `/api` prefix. The
 cd frontend
 npm install
 cp .env.example .env.local
-# Fill in DATABASE_URL (Supabase pooler URL, port 6543), JWT_SECRET, CRON_SECRET.
+# Fill in DATABASE_URL (Supabase pooler URL, port 6543) and JWT_SECRET.
 # Leave SMTP_HOST/SMTP_USER empty to print OTP emails to the console.
 ```
 
@@ -94,8 +92,8 @@ Use the seeded hall_office admin (`admin@hall12`). You must change the password 
 ## Deploying to Vercel (Hobby)
 
 1. Import the repository, set **Root Directory** to `frontend`.
-2. Add every variable from `frontend/.env.example` in Project Settings -> Environment Variables (`COOKIE_SECURE=true`, leave `ENABLE_IN_PROCESS_SCHEDULER` unset, generate a random `CRON_SECRET`).
-3. `frontend/vercel.json` registers the daily cron (`/api/cron/daily`, 22:00 IST). Vercel sends `CRON_SECRET` automatically. Hobby allows only daily schedules, so the same jobs also run lazily from the endpoints that depend on them.
+2. Add every variable from `frontend/.env.example` in Project Settings -> Environment Variables (`COOKIE_SECURE=true`).
+3. No cron or scheduler is needed: recurring-item clones and missed-booking marking run lazily when the relevant pages are opened, throttled through the database.
 4. Keep the Supabase project awake (free projects pause after a week of inactivity).
 
 Invocation budget: a hard page load costs one API call (`/api/auth/refresh` returns the user), there is no keep-alive ping, and in-app navigation is client-side, so ~700 daily users stay well inside the Hobby limits.
@@ -126,12 +124,10 @@ HMP/
 │   │   ├── email.ts, qr.ts, csv.ts, dates.ts, serializers.ts
 │   │   └── __tests__/             # vitest unit tests
 │   ├── src/lib/                   # api client, auth context, utils (client side)
-│   ├── src/instrumentation.ts     # optional in-process hourly scheduler (self-hosting)
 │   ├── drizzle/                   # SQL migrations + manual script for the existing DB
 │   ├── scripts/seed.ts            # bootstrap admin account
-│   ├── docs/api/                  # one Markdown file per endpoint
-│   └── vercel.json                # cron schedule
-├── backend/                       # legacy FastAPI service (reference only, see branch next+fastapi-version)
+│   └── docs/api/                  # one Markdown file per endpoint
+├── backend/                       # (gitignored) legacy FastAPI service, kept on branch next+fastapi-version
 ├── README.md
 └── SECURITY.md
 ```

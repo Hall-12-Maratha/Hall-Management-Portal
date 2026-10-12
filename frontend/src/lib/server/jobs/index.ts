@@ -2,11 +2,17 @@
  * Maintenance jobs.
  *
  * The FastAPI backend ran these hourly with APScheduler inside a long-lived
- * process. On Vercel Hobby only one cron per day is available, so the jobs run:
- *   1. from GET /api/cron/daily (Vercel Cron, safety net), and
- *   2. lazily from the read endpoints that depend on their results, throttled
- *      through the rate_limits table so each job runs at most once per
- *      interval across all serverless instances.
+ * process. On Vercel there is no long-lived process, so the jobs run lazily
+ * from the read endpoints that depend on their results, throttled through the
+ * rate_limits table so each job runs at most once per interval across all
+ * serverless instances:
+ *
+ *   recreateRecurringItems  <- GET /api/items, GET /api/staff/items
+ *   markMissedBookings      <- GET /api/bookings/me, GET /api/staff/bookings,
+ *                              GET /api/worker/bookings/today
+ *
+ * Mess staff can also force the missed check with
+ * POST /api/staff/bookings/trigger-missed.
  */
 
 import { purgeStaleRateLimits, tryAcquireThrottle } from "../rate-limit";
@@ -15,43 +21,12 @@ import { recreateRecurringItems } from "./recurringItems";
 
 export const RECURRING_JOB_KEY = "job:recurring_items";
 export const MISSED_JOB_KEY = "job:missed_bookings";
+export const PURGE_JOB_KEY = "job:purge_rate_limits";
 
 /** Minimum gap between lazy runs. */
 export const RECURRING_JOB_INTERVAL_SECONDS = 15 * 60;
 export const MISSED_JOB_INTERVAL_SECONDS = 5 * 60;
-
-export interface MaintenanceResult {
-  recurring_created: number | null;
-  missed_marked: number | null;
-  rate_limits_purged: number | null;
-}
-
-/** Run every job unconditionally (cron / manual trigger). */
-export async function runAllJobs(): Promise<MaintenanceResult> {
-  const result: MaintenanceResult = {
-    recurring_created: null,
-    missed_marked: null,
-    rate_limits_purged: null,
-  };
-
-  try {
-    result.recurring_created = await recreateRecurringItems();
-  } catch (err) {
-    console.error("[jobs] recreateRecurringItems failed:", err);
-  }
-  try {
-    result.missed_marked = await markMissedBookings();
-  } catch (err) {
-    console.error("[jobs] markMissedBookings failed:", err);
-  }
-  try {
-    result.rate_limits_purged = await purgeStaleRateLimits();
-  } catch (err) {
-    console.error("[jobs] purgeStaleRateLimits failed:", err);
-  }
-
-  return result;
-}
+export const PURGE_JOB_INTERVAL_SECONDS = 24 * 60 * 60;
 
 /** Run the recurring-items job if its throttle interval has elapsed. Never throws. */
 export async function ensureRecurringItemsFresh(): Promise<void> {
@@ -69,6 +44,10 @@ export async function ensureMissedBookingsFresh(): Promise<void> {
   try {
     if (await tryAcquireThrottle(MISSED_JOB_KEY, MISSED_JOB_INTERVAL_SECONDS)) {
       await markMissedBookings();
+      // Piggyback the daily cleanup of idle rate-limit rows.
+      if (await tryAcquireThrottle(PURGE_JOB_KEY, PURGE_JOB_INTERVAL_SECONDS)) {
+        await purgeStaleRateLimits();
+      }
     }
   } catch (err) {
     console.error("[jobs] lazy missed bookings run failed:", err);

@@ -35,13 +35,10 @@ export default function QueuePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleMarkServed = async (qrToken: string, id: number) => {
+  const handleMarkServed = async (id: number) => {
     setServingId(id);
     try {
-      await apiFetch("/worker/scan", {
-        method: "POST",
-        body: JSON.stringify({ qr_token: qrToken }),
-      });
+      await apiFetch(`/worker/bookings/${id}/serve`, { method: "POST" });
       toast("Marked as served!", "success");
       fetchQueue();
     } catch (err: unknown) {
@@ -95,7 +92,7 @@ export default function QueuePage() {
                 </p>
               </div>
               <button
-                onClick={() => handleMarkServed(b.qr_token, b.id)}
+                onClick={() => handleMarkServed(b.id)}
                 disabled={servingId === b.id}
                 className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-bold transition-colors min-h-[44px] disabled:opacity-50"
               >

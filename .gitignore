@@ -35,3 +35,6 @@ out/
 
 #personal
 back_db_auth.html
+
+# Legacy FastAPI service - kept on branch next+fastapi-version, not part of main
+backend/

@@ -38,6 +38,6 @@ No parameters.
 
 ## Changes vs FastAPI
 
-- The recurring-items maintenance that APScheduler ran hourly now also runs
-  lazily from this endpoint (throttled), because Vercel Hobby offers only a
-  daily cron.
+- The recurring-items maintenance that APScheduler ran hourly now runs lazily
+  from this endpoint (throttled to once per 15 minutes), because serverless
+  hosting has no long-lived process.

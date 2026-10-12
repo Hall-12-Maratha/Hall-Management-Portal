@@ -28,9 +28,12 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 - **Rate limits** live in the `rate_limits` table (15-minute fixed window), so
   they work across serverless instances: OTP requests 3/email, failed logins
   5/identifier, wrong setup codes 10/roll number.
-- **Background jobs** (recurring item clones, missed-booking marking) run from
-  `GET /api/cron/daily` (Vercel Cron) and lazily from the reads that depend on
-  them, throttled through `rate_limits` (`job:*` keys).
+- **Background jobs** (recurring item clones, missed-booking marking) have no
+  scheduler: they run lazily from the reads that depend on them (`GET /api/items`,
+  `GET /api/staff/items`, `GET /api/bookings/me`, `GET /api/staff/bookings`,
+  `GET /api/worker/bookings/today`), throttled through `rate_limits` (`job:*` keys)
+  so each runs at most once per interval across all instances. Mess staff can
+  force the missed check with `POST /api/staff/bookings/trigger-missed`.
 
 ## Endpoints
 
@@ -107,6 +110,7 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 |---|---|---|---|
 | POST | /api/worker/scan | mess_worker | [POST_worker-scan.md](worker/POST_worker-scan.md) |
 | GET | /api/worker/bookings/today | mess_worker | [GET_worker-bookings-today.md](worker/GET_worker-bookings-today.md) |
+| POST | /api/worker/bookings/{id}/serve | mess_worker | [POST_worker-bookings-[id]-serve.md](worker/POST_worker-bookings-[id]-serve.md) |
 
 ### hall-office (`docs/api/hall-office/`)
 
@@ -135,7 +139,6 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 | Method | Path | Roles | Doc |
 |---|---|---|---|
 | GET | /api/health | public | [GET_health.md](misc/GET_health.md) |
-| GET/POST | /api/cron/daily | CRON_SECRET | [GET_cron-daily.md](misc/GET_cron-daily.md) |
 
 ## Shared shapes
 

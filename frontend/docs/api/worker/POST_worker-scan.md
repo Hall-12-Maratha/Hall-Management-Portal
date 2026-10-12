@@ -54,8 +54,8 @@ Body (`application/json`):
 
 ## Business rules
 
-- The manual queue (`GET /api/worker/bookings/today`) exposes `qr_token` so
-  workers can serve without a camera while the flag is on.
+- The manual queue serves by id through `POST /api/worker/bookings/{id}/serve`,
+  which does not depend on the QR flag.
 
 ## Changes vs FastAPI
 

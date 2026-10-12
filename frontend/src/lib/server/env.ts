@@ -36,9 +36,6 @@ const envSchema = z.object({
   SMTP_PASS: z.string().default(""),
   SMTP_FROM: z.string().default("noreply@hall12.iitk.ac.in"),
 
-  CRON_SECRET: z.string().default(""),
-  ENABLE_IN_PROCESS_SCHEDULER: boolish(false),
-
   SEED_ADMIN_PASSWORD: z.string().optional(),
 });
 

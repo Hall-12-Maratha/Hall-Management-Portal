@@ -6,7 +6,7 @@
 
 ## Auth
 
-- Header: `Authorization: Bearer <access_token>` | none | cookie `refresh_token` | `Authorization: Bearer <CRON_SECRET>`
+- Header: `Authorization: Bearer <access_token>` | none | cookie `refresh_token`
 - Roles: list of roles, or "any authenticated user"
 
 ## Request
