@@ -1,10 +1,21 @@
-# Hall 12 - Marathas Portal
+# Hall 12 - Hall Management Portal (HMP)
+
+## Why this is open source
+
+This portal is built in the open for two reasons:
+
+- **Residents can build the features they want.** Anyone living in the hall can open an issue, pick one up, or send a pull request. The whole app is one Next.js project with a documented API (see [`frontend/docs/api/`](frontend/docs/api/README.md)), so a new contributor can add a page or an endpoint without learning a second stack.
+- **Other halls can run their own copy.** Fork it, change the hall name, logo and a few settings, point it at your own Supabase project and Vercel account, and you have a working mess portal. Nothing in the code is tied to Hall 12 beyond branding and the institute email domain.
+
+Contributions of any size are welcome: bug reports, copy fixes, new features, or a hall-specific fork that others can learn from.
+
+## What it does
 
 Hall Management Portal for IIT Kanpur Hall of Residence XII (Marathas). Students browse and book paid food extras, mess workers mark them served (QR scanning or a manual queue), and mess staff manage extras, the weekly menu, daily wastage figures, notices and CSV reports. The hall office onboards students in bulk and manages staff accounts.
 
 The app is a single **Next.js full-stack project** in [`frontend/`](frontend/): the UI and the API (route handlers under `/api`) deploy together on Vercel and talk to a Supabase Postgres database.
 
-> The previous Next.js + FastAPI version is preserved on the `next+fastapi-version` branch. The `backend/` folder on `main` is that legacy Python service, kept temporarily for reference; it is no longer deployed or required.
+> The previous Next.js + FastAPI version is preserved on the `next+fastapi-version` branch. Its `backend/` folder is gitignored on `main` and is no longer deployed or required.
 
 ## Tech Stack
 
