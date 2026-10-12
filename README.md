@@ -68,6 +68,8 @@ cp .env.example .env.local
 frontend/drizzle/manual/add_rate_limits_to_existing_db.sql
 ```
 
+**Every Supabase project (existing or fresh):** also run `frontend/drizzle/manual/harden_supabase_data_api.sql` once in the SQL editor. It enables row level security and revokes the `anon` / `authenticated` grants so the Supabase REST API cannot read or write the app tables; the app's own `postgres` connection is unaffected.
+
 **Fresh database:**
 
 ```bash
