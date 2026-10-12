@@ -10,6 +10,9 @@ import { useToast } from "@/components/ui/Toast";
 import { formatTime, formatPrice, formatDate } from "@/lib/utils";
 import type { Booking, ExtrasItem } from "@/types";
 
+const QR_SCANNING_ENABLED =
+  process.env.NEXT_PUBLIC_QR_SCANNING_ENABLED === "true";
+
 export default function BrowsePage() {
   const [items, setItems] = useState<ExtrasItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,7 +49,7 @@ export default function BrowsePage() {
         }),
       });
       toast(
-        `Booked ${qty}× ${bookingItem.name}! View QR in History.`,
+        `Booked ${qty}× ${bookingItem.name}!${QR_SCANNING_ENABLED ? " View QR in History." : ""}`,
         "success"
       );
       setBookingItem(null);

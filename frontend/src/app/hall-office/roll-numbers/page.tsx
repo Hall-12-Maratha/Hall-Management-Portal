@@ -137,7 +137,10 @@ export default function RollNumbersPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "student_setup_codes.csv";
+      const now = new Date();
+      const pad = (n: number) => n.toString().padStart(2, "0");
+      const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      a.download = `student_setup_codes_${ts}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
