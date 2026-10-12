@@ -44,14 +44,23 @@ export const POST = handleRoute(async (req: NextRequest) => {
     httpError(409, "Roll number already exists in allowed list.");
   }
 
+  const [emailClash] = await db
+    .select({ rollNo: allowedRollNumbers.rollNo })
+    .from(allowedRollNumbers)
+    .where(eq(allowedRollNumbers.email, body.email))
+    .limit(1);
+  if (emailClash) {
+    httpError(409, `Email already used by roll number ${emailClash.rollNo}.`);
+  }
+
   const inserted = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(allowedRollNumbers)
       .values({
         rollNo,
         name: body.name,
-        // Student identity always uses the institute address (the body email is ignored).
-        email: `${rollNo.toLowerCase()}@iitk.ac.in`,
+        // The email is the student's login identifier (userid@iitk.ac.in).
+        email: body.email,
         roomNumber: body.room_number,
         setupCode: generateSetupCode(),
         uploadedBy: me.id,

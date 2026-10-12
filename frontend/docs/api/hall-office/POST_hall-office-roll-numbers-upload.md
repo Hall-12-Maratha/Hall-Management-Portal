@@ -17,8 +17,9 @@ Body (`multipart/form-data`): field `file`, a `.csv` of at most 1 MB, UTF-8
 (a BOM is accepted). Columns in order: `roll_no, name, email, room_number`.
 A first row whose first cell is `roll`, `roll_no` or `roll_number`
 (case-insensitive, spaces as underscores) is treated as a header. Blank rows
-and rows with an empty roll are skipped. The `email` column is ignored: the
-institute address `<roll>@iitk.ac.in` is always used.
+and rows with an empty roll are skipped. The `email` column is required: it is
+the student's institute address (`userid@iitk.ac.in`), stored lower-cased, and
+becomes their login identifier and OTP address. It must be unique in the file.
 
 ## Response
 
@@ -37,6 +38,8 @@ institute address `<roll>@iitk.ac.in` is always used.
 | 400 | `File too large. Maximum size is 1MB.` | > 1,048,576 bytes |
 | 400 | `File is not valid UTF-8 text.` | decoding failure |
 | 400 | `Invalid roll number on CSV row N.` | roll not matching `[A-Za-z0-9-]{3,50}` (1-based row index incl. header/blank rows) |
+| 400 | `Invalid or missing email on CSV row N.` | third column empty or not an email |
+| 400 | `Email x is used by both A and B.` | two rolls share an email |
 | 400 | `CSV file contains no valid roll numbers.` | nothing to import |
 | 401 / 403 | guard messages | missing token, inactive, wrong role |
 
@@ -54,4 +57,4 @@ In one transaction:
 
 ## Changes vs FastAPI
 
-- None (BOM stripping and header detection existed in the latest FastAPI version).
+- The email column is used as given (required, unique) instead of being replaced by `<roll>@iitk.ac.in`.

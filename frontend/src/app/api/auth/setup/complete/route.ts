@@ -3,7 +3,7 @@
  * Port of routers/auth.py::setup_complete.
  */
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import { hashPassword } from "@/lib/server/auth/password";
@@ -54,18 +54,33 @@ export const POST = handleRoute(async (req: NextRequest) => {
     httpError(403, "Account is deactivated. Contact the hall office.");
   }
 
+  // The institute email on the roll row is the login identifier.
+  const email = allowed.email?.trim().toLowerCase();
+  if (!email) {
+    httpError(400, "No email is on file for this roll number. Contact the hall office.");
+  }
+  if (!existingUser) {
+    const [taken] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(sql`lower(${users.identifier}) = ${email}`)
+      .limit(1);
+    if (taken) {
+      httpError(409, "An account with this email already exists. Please log in.");
+    }
+  }
+
   const passwordHash = await hashPassword(body.password);
 
   const user = await db.transaction(async (tx): Promise<UserRow> => {
     let row: UserRow;
 
     if (!existingUser) {
-      const identifier = (allowed.email ?? `${rollNo}@student.iitk.ac.in`).toLowerCase();
       const [inserted] = await tx
         .insert(users)
         .values({
-          identifier,
-          email: allowed.email ? allowed.email.toLowerCase() : null,
+          identifier: email,
+          email,
           passwordHash,
           role: "student",
           name: body.name,

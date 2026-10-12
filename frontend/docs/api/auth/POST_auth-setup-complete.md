@@ -36,21 +36,23 @@ and `Set-Cookie: refresh_token=...; HttpOnly; Path=/; Max-Age=604800; SameSite=l
 | 409 | `An account is already registered. Please log in.` | student with this roll_no already has `password_set` |
 | 400 | `Invalid setup code.` | roll not allowed, no code, or mismatch |
 | 403 | `Account is deactivated. Contact the hall office.` | an existing (not yet set up) user is inactive |
+| 400 | `No email is on file for this roll number. Contact the hall office.` | roll row has no email |
+| 409 | `An account with this email already exists. Please log in.` | another user already has this identifier |
 | 429 | `Too many attempts. Please wait 15 minutes.` | 10 failed attempts for this roll in 15 min |
 | 422 | `<field>: <message>` | validation |
 
 ## Side effects
 
-- Inserts a `users` row (`role=student`, `identifier` = allowed email or
-  `<roll>@student.iitk.ac.in`, lower-cased, `is_active=true`, `password_set=true`,
+- Inserts a `users` row (`role=student`, `identifier` = the roll's institute
+  email, lower-cased, `is_active=true`, `password_set=true`,
   `must_change_password=false`) or updates the existing row's password, name and room.
 - Sets `allowed_roll_numbers.setup_code = NULL` (single use), in one transaction.
 - Clears rate-limit key `setup:<ROLL_NO>`; issues access + refresh tokens.
 
 ## Business rules
 
-- The identifier is the institute email created by the hall office upload
-  (`<roll>@iitk.ac.in`); students log in with it.
+- The identifier is the institute email the hall office supplied for the roll
+  (`userid@iitk.ac.in`); students log in and receive OTPs with it.
 
 ## Changes vs FastAPI
 

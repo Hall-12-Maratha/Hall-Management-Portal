@@ -22,6 +22,7 @@ export const ROLL_NO_RE = /^[A-Za-z0-9-]+$/;
 export const allowedRollCreateSchema = z.object({
   roll_no: z.string().min(3).max(50).regex(ROLL_NO_RE, "Invalid roll number."),
   name: optionalString(255),
-  email: z.email().nullish().transform((value) => value ?? null),
+  /** Student's institute email (userid@iitk.ac.in): the login identifier and OTP address. */
+  email: z.email().transform((value) => value.trim().toLowerCase()),
   room_number: optionalString(50),
 });

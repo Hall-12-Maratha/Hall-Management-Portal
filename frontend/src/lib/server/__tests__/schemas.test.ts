@@ -44,7 +44,8 @@ describe("schemas", () => {
   it("restricts staff roles and roll number format", () => {
     expect(staffCreateSchema.safeParse({ name: "X", role: "student" }).success).toBe(false);
     expect(allowedRollCreateSchema.safeParse({ roll_no: "23 0001" }).success).toBe(false);
-    expect(allowedRollCreateSchema.parse({ roll_no: "230001" }).email).toBeNull();
+    expect(allowedRollCreateSchema.safeParse({ roll_no: "230001" }).success).toBe(false);
+    expect(allowedRollCreateSchema.parse({ roll_no: "230001", email: "Abc24@IITK.ac.in" }).email).toBe("abc24@iitk.ac.in");
   });
 
   it("formats zod errors FastAPI-style", () => {

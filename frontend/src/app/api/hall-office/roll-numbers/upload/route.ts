@@ -6,6 +6,7 @@
 
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import type { NextRequest } from "next/server";
+import { z } from "zod";
 
 import { requireRole } from "@/lib/server/auth/guard";
 import { parseCsv } from "@/lib/server/csv";
@@ -74,11 +75,16 @@ export const POST = handleRoute(async (req: NextRequest) => {
     const name = row[1]?.trim() ? row[1].trim() : null;
     const roomNumber = row[3]?.trim() ? row[3].trim() : null;
 
+    // The email is the student's login identifier and OTP address, so it is required.
+    const emailResult = z.email().safeParse((row[2] ?? "").trim().toLowerCase());
+    if (!emailResult.success) {
+      httpError(400, `Invalid or missing email on CSV row ${rowIdx + 1}.`);
+    }
+
     parsedRows.push({
       rollNo,
       name,
-      // Student identity and password recovery always use the institute address.
-      email: `${rollNo.toLowerCase()}@iitk.ac.in`,
+      email: emailResult.data,
       roomNumber,
     });
   });
@@ -93,6 +99,16 @@ export const POST = handleRoute(async (req: NextRequest) => {
     seen.add(row.rollNo);
     return true;
   });
+
+  // Emails are login identifiers, so two rolls cannot share one.
+  const emailOwners = new Map<string, string>();
+  for (const row of uniqueRolls) {
+    const owner = emailOwners.get(row.email);
+    if (owner) {
+      httpError(400, `Email ${row.email} is used by both ${owner} and ${row.rollNo}.`);
+    }
+    emailOwners.set(row.email, row.rollNo);
+  }
 
   await getDb().transaction(async (tx) => {
     // Replace mode: drop the previous list (and its setup codes) entirely.

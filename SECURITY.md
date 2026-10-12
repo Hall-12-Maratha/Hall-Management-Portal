@@ -17,7 +17,7 @@ Security decisions of the Next.js full-stack version. Implementation lives in
 - Refresh tokens are stateless; logout clears the cookie. Deactivating an account (`is_active = false`) blocks it immediately because every request re-reads the user row.
 
 ### Student onboarding
-1. The hall office uploads the roll list; identities are always `<roll>@iitk.ac.in`.
+1. The hall office uploads the roll list with each student's institute email (`userid@iitk.ac.in`), which becomes the login identifier.
 2. Setup codes (8 chars, `crypto.randomInt`) are generated on export and stored on the roll row; they are consumed on first use.
 3. Wrong setup codes are rate limited (10 per roll per 15 minutes).
 

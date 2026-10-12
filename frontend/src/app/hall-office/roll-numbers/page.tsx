@@ -19,6 +19,7 @@ export default function RollNumbersPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [newRoll, setNewRoll] = useState("");
   const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [newRoom, setNewRoom] = useState("");
 
   const { toast } = useToast();
@@ -88,13 +89,14 @@ export default function RollNumbersPage() {
 
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRoll.trim()) return;
+    if (!newRoll.trim() || !newEmail.trim()) return;
 
     try {
       const createdRoll = await apiFetch<AllowedRollResponse>("/hall-office/roll-numbers", {
         method: "POST",
         body: JSON.stringify({
           roll_no: newRoll.trim(),
+          email: newEmail.trim().toLowerCase(),
           name: newName.trim() || undefined,
           room_number: newRoom.trim() || undefined,
         }),
@@ -103,6 +105,7 @@ export default function RollNumbersPage() {
       toast(`Added ${newRoll.trim()}`, "success");
       setNewRoll("");
       setNewName("");
+      setNewEmail("");
       setNewRoom("");
       setIsAdding(false);
       setRolls((currentRolls) => [
@@ -198,7 +201,7 @@ export default function RollNumbersPage() {
             <p className="text-xs mt-2 text-text-muted">
               CSV columns: <br/>
               <span className="font-mono text-text-secondary">Roll No, Name, Email, Room Number</span> <br/>
-              Email is normalized to roll@iitk.ac.in. A header row is optional.
+              Email is the student&apos;s institute address (userid@iitk.ac.in) and becomes their login id. A header row is optional.
             </p>
           </div>
           <button
@@ -238,6 +241,14 @@ export default function RollNumbersPage() {
                   placeholder="Name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
+                  className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                />
+                <input
+                  type="email"
+                  placeholder="Email (userid@iitk.ac.in) *"
+                  required
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
                   className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
                 />
                 <input
