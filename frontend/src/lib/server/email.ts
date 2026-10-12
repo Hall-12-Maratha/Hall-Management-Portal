@@ -32,6 +32,11 @@ function getTransporter(): Transporter | null {
 export async function sendEmail(to: string, subject: string, body: string): Promise<void> {
   const transport = getTransporter();
   if (!transport) {
+    if (process.env.NODE_ENV === "production") {
+      // Never print OTPs to production logs; surface the misconfiguration instead.
+      console.error("SMTP is not configured (SMTP_HOST/SMTP_USER); email not sent.");
+      throw new Error("Email service is not configured.");
+    }
     console.info(
       [
         "========== EMAIL (console backend) ==========",

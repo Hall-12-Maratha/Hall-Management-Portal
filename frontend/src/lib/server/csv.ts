@@ -5,9 +5,19 @@
 
 export type CsvCell = string | number | null | undefined;
 
+/**
+ * Spreadsheet formula injection: a cell starting with = + - @ or a tab/CR is
+ * executed as a formula by Excel/Sheets. User-supplied strings (names, rooms,
+ * item names) get a leading apostrophe so they render as text. Numbers are
+ * passed as numbers and are never prefixed.
+ */
+function neutralizeFormula(text: string): string {
+  return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+}
+
 function escapeCell(cell: CsvCell): string {
   if (cell === null || cell === undefined) return "";
-  const text = String(cell);
+  const text = typeof cell === "string" ? neutralizeFormula(cell) : String(cell);
   if (/[",\r\n]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
