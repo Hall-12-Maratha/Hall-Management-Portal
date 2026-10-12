@@ -4,7 +4,7 @@
  * Port of routers/hall_office.py::get_roll_numbers / add_roll_number.
  */
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/server/auth/guard";
@@ -21,12 +21,32 @@ export const dynamic = "force-dynamic";
 export const GET = handleRoute(async (req: NextRequest) => {
   await requireRole(req, "hall_office");
 
-  const rolls = await getDb()
-    .select()
+  // Left-join the student account (by roll or email) to expose its access state.
+  const rows = await getDb()
+    .select({ roll: allowedRollNumbers, isActive: users.isActive })
     .from(allowedRollNumbers)
+    .leftJoin(
+      users,
+      and(
+        eq(users.role, "student"),
+        or(
+          eq(users.rollNo, allowedRollNumbers.rollNo),
+          sql`lower(${users.identifier}) = lower(${allowedRollNumbers.email})`
+        )
+      )
+    )
     .orderBy(desc(allowedRollNumbers.uploadedAt));
 
-  return json(rolls.map(toAllowedRoll));
+  // A roll can match at most one account in practice; keep the first row per roll.
+  const seen = new Set<string>();
+  const result = [];
+  for (const { roll, isActive } of rows) {
+    if (seen.has(roll.rollNo)) continue;
+    seen.add(roll.rollNo);
+    result.push(toAllowedRoll(roll, isActive));
+  }
+
+  return json(result);
 });
 
 export const POST = handleRoute(async (req: NextRequest) => {

@@ -150,6 +150,7 @@ export interface AllowedRollResponse {
   setup_code: string | null;
   uploaded_at: string;
   uploaded_by: number;
+  account_status: "not_registered" | "active" | "restricted";
 }
 
 export interface AllowedRollCreate {

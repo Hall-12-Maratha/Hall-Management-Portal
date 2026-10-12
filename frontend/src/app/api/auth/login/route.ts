@@ -3,7 +3,7 @@
  * Port of routers/auth.py::login.
  */
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import { createChangePasswordToken } from "@/lib/server/auth/jwt";
@@ -33,10 +33,14 @@ export const POST = handleRoute(async (req: NextRequest) => {
   await assertUnderLimit(limitKey, LOGIN_LIMIT, LOGIN_LIMIT_DETAIL);
 
   const db = getDb();
-  // Emails are case-insensitive; staff IDs (MS-001) are matched exactly.
+  // Emails are case-insensitive; staff IDs (MS-001) are matched exactly;
+  // students may also log in with their roll number.
   const condition = identifier.includes("@")
     ? sql`lower(${users.identifier}) = ${identifier.toLowerCase()}`
-    : eq(users.identifier, identifier);
+    : or(
+        eq(users.identifier, identifier),
+        and(eq(users.role, "student"), eq(users.rollNo, identifier.toUpperCase()))
+      );
   const [user] = await db.select().from(users).where(condition).limit(1);
 
   if (!user) {

@@ -224,14 +224,14 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="glass-card p-6 space-y-5 animate-fade-in">
             <div>
               <label htmlFor="identifier" className="block text-xs font-medium text-text-secondary mb-1.5">
-                Email / Staff ID
+                Roll No / Email / Staff ID
               </label>
               <input
                 id="identifier"
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="e.g. abcd24@iitk.ac.in or MS-001"
+                placeholder="e.g. 230001, abcd24@iitk.ac.in or MS-001"
                 className={inputClass}
                 required
                 autoComplete="username"
@@ -393,8 +393,8 @@ export default function LoginPage() {
           </p>
         )}
 
-        <p className="text-center text-xs text-text-muted mt-8 opacity-75">
-          made with care by your mess & canteen secretary
+        <p className="text-center text-sm text-text-secondary mt-8">
+          made with 💖 by your mess & canteen secretary
         </p>
       </div>
     </div>

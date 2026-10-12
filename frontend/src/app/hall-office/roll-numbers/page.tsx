@@ -10,6 +10,7 @@ export default function RollNumbersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleOtp, setVisibleOtp] = useState<string | null>(null);
+  const [updatingAccess, setUpdatingAccess] = useState<string | null>(null);
   
   // CSV Upload State
   const [file, setFile] = useState<File | null>(null);
@@ -116,6 +117,33 @@ export default function RollNumbersPage() {
     } catch (err: unknown) {
       const error = err as Error;
       toast(error.message || "Failed to add roll number", "error");
+    }
+  };
+
+  const handleAccessChange = async (roll_no: string, isActive: boolean) => {
+    if (
+      !isActive &&
+      !confirm(`Restrict ${roll_no}? They will not be able to log in until you restore access.`)
+    ) {
+      return;
+    }
+    setUpdatingAccess(roll_no);
+    try {
+      const data = await apiFetch<{ message: string }>(`/hall-office/roll-numbers/${encodeURIComponent(roll_no)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: isActive }),
+      });
+      toast(data.message, "success");
+      setRolls((current) =>
+        current.map((roll) =>
+          roll.roll_no === roll_no ? { ...roll, account_status: isActive ? "active" : "restricted" } : roll
+        )
+      );
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast(error.message || "Failed to update access", "error");
+    } finally {
+      setUpdatingAccess(null);
     }
   };
 
@@ -299,19 +327,20 @@ export default function RollNumbersPage() {
                 <th className="px-6 py-3 font-medium">Email</th>
                 <th className="px-6 py-3 font-medium">Room</th>
                 <th className="px-6 py-3 font-medium">Setup Code</th>
+                <th className="px-6 py-3 font-medium">Access</th>
                 <th className="px-6 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-text-muted">
+                  <td colSpan={7} className="px-6 py-8 text-center text-text-muted">
                     Loading records...
                   </td>
                 </tr>
               ) : filteredRolls.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-text-muted">
+                  <td colSpan={7} className="px-6 py-8 text-center text-text-muted">
                     No matching roll numbers found.
                   </td>
                 </tr>
@@ -342,6 +371,26 @@ export default function RollNumbersPage() {
                         </div>
                       ) : (
                         <span className="text-xs text-text-muted italic opacity-50">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3">
+                      {r.account_status === "not_registered" ? (
+                        <span className="text-xs text-text-muted italic">Not set up</span>
+                      ) : (
+                        <select
+                          value={r.account_status}
+                          onChange={(e) => handleAccessChange(r.roll_no, e.target.value === "active")}
+                          disabled={updatingAccess === r.roll_no}
+                          aria-label={`Access for ${r.roll_no}`}
+                          className={`px-2 py-1 rounded-lg border text-xs font-semibold focus:outline-none focus:border-accent disabled:opacity-50 ${
+                            r.account_status === "active"
+                              ? "bg-success/10 border-success/30 text-success"
+                              : "bg-error/10 border-error/30 text-error"
+                          }`}
+                        >
+                          <option value="active">Active</option>
+                          <option value="restricted">Restricted</option>
+                        </select>
                       )}
                     </td>
                     <td className="px-6 py-3 text-right">

@@ -132,7 +132,15 @@ export function toNotice(n: NoticeRow) {
   };
 }
 
-export function toAllowedRoll(r: AllowedRollRow) {
+export type AccountStatus = "not_registered" | "active" | "restricted";
+
+/**
+ * @param isActive the linked student account's `is_active`, or null/undefined
+ *                 when no account exists yet.
+ */
+export function toAllowedRoll(r: AllowedRollRow, isActive?: boolean | null) {
+  const accountStatus: AccountStatus =
+    isActive === null || isActive === undefined ? "not_registered" : isActive ? "active" : "restricted";
   return {
     roll_no: r.rollNo,
     name: r.name,
@@ -141,6 +149,7 @@ export function toAllowedRoll(r: AllowedRollRow) {
     setup_code: r.setupCode,
     uploaded_at: r.uploadedAt.toISOString(),
     uploaded_by: r.uploadedBy,
+    account_status: accountStatus,
   };
 }
 

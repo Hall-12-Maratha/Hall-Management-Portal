@@ -17,7 +17,7 @@ Body (`application/json`):
 
 | Field | Type | Required | Validation |
 |---|---|---|---|
-| identifier | string | yes | min 1; students use their email, staff their ID (`MS-001`) |
+| identifier | string | yes | min 1; students use their email or roll number, staff their ID (`MS-001`) |
 | password | string | yes | min 1 |
 
 ## Response
@@ -52,9 +52,10 @@ Body (`application/json`):
 
 ## Business rules
 
-- Identifiers containing `@` are matched case-insensitively; staff IDs exactly.
+- Identifiers containing `@` are matched case-insensitively against the email.
+  Anything else matches a staff ID exactly or a student's roll number (upper-cased).
 
 ## Changes vs FastAPI
 
-- Email identifiers are case-insensitive.
+- Email identifiers are case-insensitive; students can also log in with their roll number.
 - Rate limit is stored in Postgres instead of process memory.

@@ -121,6 +121,7 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 | GET | /api/hall-office/roll-numbers/export-setup | hall_office | [GET_hall-office-roll-numbers-export-setup.md](hall-office/GET_hall-office-roll-numbers-export-setup.md) |
 | GET | /api/hall-office/roll-numbers | hall_office | [GET_hall-office-roll-numbers.md](hall-office/GET_hall-office-roll-numbers.md) |
 | POST | /api/hall-office/roll-numbers | hall_office | [POST_hall-office-roll-numbers.md](hall-office/POST_hall-office-roll-numbers.md) |
+| PATCH | /api/hall-office/roll-numbers/{roll_no} | hall_office | [PATCH_hall-office-roll-numbers-[roll_no].md](hall-office/PATCH_hall-office-roll-numbers-[roll_no].md) |
 | DELETE | /api/hall-office/roll-numbers/{roll_no} | hall_office | [DELETE_hall-office-roll-numbers-[roll_no].md](hall-office/DELETE_hall-office-roll-numbers-[roll_no].md) |
 | POST | /api/hall-office/staff | hall_office | [POST_hall-office-staff.md](hall-office/POST_hall-office-staff.md) |
 | GET | /api/hall-office/staff | hall_office | [GET_hall-office-staff.md](hall-office/GET_hall-office-staff.md) |

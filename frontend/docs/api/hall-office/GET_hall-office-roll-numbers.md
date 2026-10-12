@@ -22,7 +22,8 @@ No parameters.
 ```json
 [ { "roll_no": "230001", "name": "Test Student", "email": "230001@iitk.ac.in",
     "room_number": "A-101", "setup_code": "K7Q2M9ZA",
-    "uploaded_at": "2026-10-13T08:00:00.000Z", "uploaded_by": 1 } ]
+    "uploaded_at": "2026-10-13T08:00:00.000Z", "uploaded_by": 1,
+    "account_status": "active" } ]
 ```
 
 ## Errors
@@ -38,7 +39,9 @@ No parameters.
 ## Business rules
 
 - `setup_code` is `null` once the student has completed setup.
+- `account_status` is `not_registered` (no account yet), `active`, or `restricted`
+  (login blocked via `PATCH /api/hall-office/roll-numbers/{roll_no}`).
 
 ## Changes vs FastAPI
 
-- None.
+- Adds `account_status` by left-joining the student account.
