@@ -394,7 +394,7 @@ export default function LoginPage() {
         )}
 
         <p className="text-center text-sm text-text-secondary mt-8">
-          made with 💖 by your mess & canteen secretary
+          Made with 💖 by your mess & canteen secretary
         </p>
       </div>
     </div>

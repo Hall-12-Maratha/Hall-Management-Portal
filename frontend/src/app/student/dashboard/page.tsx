@@ -84,16 +84,14 @@ export default function StudentDashboard() {
             return (
               <div
                 key={day}
-                className={`glass-card rounded-xl overflow-hidden transition-colors ${
-                  isToday ? "border-accent/40 bg-accent-bg" : ""
-                }`}
+                className={`glass-card rounded-xl overflow-hidden transition-colors ${isToday ? "border-accent/40 bg-accent-bg" : ""
+                  }`}
               >
                 <div className="p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <span
-                      className={`text-sm font-semibold ${
-                        isToday ? "text-accent" : "text-text-primary"
-                      }`}
+                      className={`text-sm font-semibold ${isToday ? "text-accent" : "text-text-primary"
+                        }`}
                     >
                       {getDayName(day)}
                     </span>
@@ -132,7 +130,7 @@ export default function StudentDashboard() {
       {/* 3. Wastage Summary */}
       <section>
         <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
-          Mess Wastage
+          Mess Wastage and BDMR
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="glass-card p-4 rounded-xl">
