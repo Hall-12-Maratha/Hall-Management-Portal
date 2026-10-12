@@ -4,6 +4,7 @@
  * Forced password change page - for staff accounts on first login.
  */
 
+import PasswordInput from "@/components/ui/PasswordInput";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -95,9 +96,8 @@ export default function ChangePasswordPage() {
             >
               New Password (min 8 characters)
             </label>
-            <input
-              id="new-pwd"
-              type="password"
+            <PasswordInput
+              id="new-pwd"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password"
@@ -114,9 +114,8 @@ export default function ChangePasswordPage() {
             >
               Confirm New Password
             </label>
-            <input
-              id="confirm-pwd"
-              type="password"
+            <PasswordInput
+              id="confirm-pwd"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm new password"

@@ -4,6 +4,7 @@
  * Student Setup - Step 1: Roll No + Setup Code → Step 2: Set password & details.
  */
 
+import PasswordInput from "@/components/ui/PasswordInput";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -248,9 +249,8 @@ export default function SignupPage() {
               >
                 Password (min 8 characters)
               </label>
-              <input
-                id="new-password"
-                type="password"
+              <PasswordInput
+                id="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
@@ -267,9 +267,8 @@ export default function SignupPage() {
               >
                 Confirm Password
               </label>
-              <input
-                id="confirm-password"
-                type="password"
+              <PasswordInput
+                id="confirm-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm password"

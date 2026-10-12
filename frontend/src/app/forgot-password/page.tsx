@@ -7,6 +7,7 @@
  * Step 3: Set new password
  */
 
+import PasswordInput from "@/components/ui/PasswordInput";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -266,9 +267,8 @@ export default function ForgotPasswordPage() {
               >
                 New Password (min 8 characters)
               </label>
-              <input
+              <PasswordInput
                 id="new-password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
@@ -285,9 +285,8 @@ export default function ForgotPasswordPage() {
               >
                 Confirm Password
               </label>
-              <input
+              <PasswordInput
                 id="confirm-password"
-                type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm password"

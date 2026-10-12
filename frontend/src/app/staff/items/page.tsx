@@ -4,6 +4,7 @@
  * Mess staff - extras items CRUD.
  */
 
+import PasswordInput from "@/components/ui/PasswordInput";
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -407,8 +408,7 @@ export default function StaffItemsPage() {
           <form onSubmit={handleBulkDelete} className="relative glass-card p-6 rounded-2xl w-full max-w-sm">
             <h2 className="text-lg font-bold text-text-primary mb-2">Bulk Delete Bookings</h2>
             <p className="text-sm text-text-muted mb-4">Enter your password to confirm clearing all bookings for this item. This action cannot be undone.</p>
-            <input
-              type="password"
+            <PasswordInput
               placeholder="Your Password"
               value={bulkDeletePassword}
               onChange={(e) => setBulkDeletePassword(e.target.value)}

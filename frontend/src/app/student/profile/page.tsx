@@ -1,5 +1,6 @@
 "use client";
 
+import PasswordInput from "@/components/ui/PasswordInput";
 import React, { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -92,8 +93,7 @@ export default function ProfilePage() {
             <label className="block text-xs font-medium text-text-secondary mb-1.5">
               Current Password
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent input-glow transition-colors"
@@ -105,8 +105,7 @@ export default function ProfilePage() {
             <label className="block text-xs font-medium text-text-secondary mb-1.5">
               New Password
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent input-glow transition-colors"
@@ -119,8 +118,7 @@ export default function ProfilePage() {
             <label className="block text-xs font-medium text-text-secondary mb-1.5">
               Confirm New Password
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-bg-elevated border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent input-glow transition-colors"
