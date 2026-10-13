@@ -83,16 +83,16 @@ export default function StaffAccountsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Retire this staff account? It will be deactivated and retained for audit history.")) return;
+    if (!confirm("Delete this staff account permanently? Bookings they served and items they created are kept.")) return;
     try {
       await apiFetch(`/hall-office/staff/${id}`, {
         method: "DELETE",
       });
-      toast("Account retired and deactivated.", "success");
+      toast("Staff account deleted.", "success");
       fetchStaff();
     } catch (err: unknown) {
       const error = err as Error;
-      toast(error.message || "Failed to retire account.", "error");
+      toast(error.message || "Failed to delete account.", "error");
     }
   };
 
@@ -102,7 +102,7 @@ export default function StaffAccountsPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-4xl space-y-8">
       {/* Create account form */}
       <section>
         <h1 className="text-lg font-bold text-text-primary mb-4">
@@ -262,7 +262,7 @@ export default function StaffAccountsPage() {
                     onClick={() => handleDelete(s.id)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-error-bg text-error hover:bg-error/20 transition-colors"
                   >
-                    Retire
+                    Delete
                   </button>
                 </div>
               </div>

@@ -28,12 +28,12 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 - **Rate limits** live in the `rate_limits` table (15-minute fixed window), so
   they work across serverless instances: OTP requests 3/email, failed logins
   5/identifier, wrong setup codes 10/roll number.
-- **Background jobs** (recurring item clones, missed-booking marking) have no
-  scheduler: they run lazily from the reads that depend on them (`GET /api/items`,
-  `GET /api/staff/items`, `GET /api/bookings/me`, `GET /api/staff/bookings`,
-  `GET /api/worker/bookings/today`), throttled through `rate_limits` (`job:*` keys)
-  so each runs at most once per interval across all instances. Mess staff can
-  force the missed check with `POST /api/staff/bookings/trigger-missed`.
+- **Background jobs** have no scheduler: weekly-extra occurrences are generated
+  from `GET /api/items` and `GET /api/staff/items`, and missed-booking marking
+  runs from `GET /api/bookings/me`, `GET /api/staff/bookings` and
+  `GET /api/worker/bookings/today`, each throttled through `rate_limits`
+  (`job:*` keys) so it runs at most once per interval across all instances.
+  Mess staff can force the missed check with `POST /api/staff/bookings/trigger-missed`.
 
 ## Endpoints
 
@@ -155,7 +155,7 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 // ItemResponse
 { "id": 3, "name": "Paneer Tikka", "price": 40, "date": "2026-10-13", "meal_type": "dinner",
   "opens_at": "2026-10-11T14:00:00.000Z", "closes_at": "2026-10-13T14:00:00.000Z",
-  "prep_time_mins": 2880, "is_recurring": false, "recurring_weekday": null,
+  "prep_time_mins": 4320, "is_recurring": false, "recurring_weekday": null,
   "is_active": true, "created_at": "2026-10-10T08:00:00.000Z" }
 
 // BookingResponse

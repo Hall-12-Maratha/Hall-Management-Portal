@@ -4,8 +4,10 @@
 **Implementation:** `frontend/src/app/api/hall-office/staff/[user_id]/route.ts`
 **FastAPI origin:** `backend/app/routers/hall_office.py::delete_staff_account`
 
-Retire a staff account. The row is kept (deactivated) so audit references such
-as `served_by` and `created_by` stay valid.
+Delete a staff account permanently. Records the account touched are kept:
+`served_by` on bookings is cleared, and items, notices, menu edits, wastage
+entries and roll uploads they created are re-attributed to the hall office user
+performing the deletion.
 
 ## Auth
 
@@ -21,7 +23,7 @@ as `served_by` and `created_by` stay valid.
 `200`:
 
 ```json
-{ "message": "Staff account deactivated and retained for audit history." }
+{ "message": "Staff account deleted." }
 ```
 
 ## Errors
@@ -34,12 +36,15 @@ as `served_by` and `created_by` stay valid.
 
 ## Side effects
 
-- Sets `is_active = false`.
+- In one transaction: clears `extras_bookings.served_by`, re-attributes
+  `extras_items.created_by`, `notices.created_by`, `weekly_menu.updated_by`,
+  `wastage_logs.entered_by`, `allowed_roll_numbers.uploaded_by` and clears
+  `users.created_by`, then deletes the `users` row.
 
 ## Business rules
 
-- Identical effect to `PATCH` with `is_active: false`.
+- Use `PATCH` with `is_active: false` to suspend an account without deleting it.
 
 ## Changes vs FastAPI
 
-- None.
+- Hard delete with re-attribution (FastAPI only deactivated).

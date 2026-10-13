@@ -4,7 +4,13 @@
 **Implementation:** `frontend/src/app/api/staff/items/[id]/route.ts`
 **FastAPI origin:** `backend/app/routers/staff.py::update_item`
 
-Partial update of an extras item. Only fields that are present and not `null` are applied.
+Partial update of an extras item. Only fields that are present and not `null`
+are applied. For a weekly rule, the new name, price, meal, close time of day
+and active flag are also applied to its upcoming occurrences that have no
+bookings yet; occurrences with bookings keep the terms students booked under.
+Changing `recurring_weekday` (or `date`, which implies the weekday) moves the
+rule: upcoming unbooked occurrences on the old day are deleted and new ones are
+generated on the new day.
 
 ## Auth
 
@@ -22,7 +28,7 @@ Partial update of an extras item. Only fields that are present and not `null` ar
 | price | number | > 0 |
 | date | string | YYYY-MM-DD |
 | meal_type | string | breakfast \| lunch \| dinner |
-| closes_at | string | ISO-8601; also resets `opens_at = closes_at - 48h` |
+| closes_at | string | ISO-8601; also resets `opens_at = closes_at - 72h` |
 | is_recurring | boolean | false also clears `recurring_weekday` |
 | recurring_weekday | integer | 0..6 |
 | is_active | boolean | |
@@ -41,7 +47,8 @@ Partial update of an extras item. Only fields that are present and not `null` ar
 
 ## Side effects
 
-- Updates the `extras_items` row.
+- Updates the `extras_items` row; for a weekly rule also its future unbooked
+  occurrences, and generates any missing occurrences for the next 7 days.
 
 ## Business rules
 
@@ -50,4 +57,4 @@ Partial update of an extras item. Only fields that are present and not `null` ar
 
 ## Changes vs FastAPI
 
-- None.
+- The booking window is 72 hours instead of 48.

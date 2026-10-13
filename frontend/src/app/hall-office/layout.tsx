@@ -46,7 +46,7 @@ export default function HallOfficeLayout({
       <Header />
       {/* Tab navigation */}
       <div className="border-b border-border bg-bg-surface/50">
-        <div className="max-w-5xl mx-auto px-4 flex gap-1">
+        <div className="w-full px-4 sm:px-6 lg:px-10 flex gap-1">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname.startsWith(item.href);
             return (
@@ -65,7 +65,7 @@ export default function HallOfficeLayout({
           })}
         </div>
       </div>
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 pt-4 pb-8">
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 pt-4 pb-8">
         {children}
       </main>
     </div>

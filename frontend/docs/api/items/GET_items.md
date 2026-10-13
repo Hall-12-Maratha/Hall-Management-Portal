@@ -27,17 +27,17 @@ No parameters.
 
 ## Side effects
 
-- May run the recurring-items job first if it has not run in the last 15
-  minutes (creates today's clones of recurring templates). Failures are logged
-  and never affect the response.
+- May first generate upcoming occurrences of weekly items (throttled to once
+  per 15 minutes). Failures are logged and never affect the response.
 
 ## Business rules
 
-- Returned items satisfy all of: `is_active`, `opens_at <= now < closes_at`,
-  and `date` between today and tomorrow in India time.
+- Returned items satisfy all of: `is_active`, `opens_at <= now < closes_at`
+  (the window opens 72 hours before close) and `date` not before today in
+  India time. Ordered by date, then meal, then close time. The staff Items
+  page labels an item "Open" with exactly this rule.
 
 ## Changes vs FastAPI
 
-- The recurring-items maintenance that APScheduler ran hourly now runs lazily
-  from this endpoint (throttled to once per 15 minutes), because serverless
-  hosting has no long-lived process.
+- No date upper bound (FastAPI limited the list to today and tomorrow); the
+  72-hour window is the only limit, so staff and students agree on what is open.

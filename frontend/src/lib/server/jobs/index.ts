@@ -4,12 +4,12 @@
  * The FastAPI backend ran these hourly with APScheduler inside a long-lived
  * process. On Vercel there is no long-lived process, so the jobs run lazily
  * from the read endpoints that depend on their results, throttled through the
- * rate_limits table so each job runs at most once per interval across all
+ * rate_limits table so each runs at most once per interval across all
  * serverless instances:
  *
- *   recreateRecurringItems  <- GET /api/items, GET /api/staff/items
- *   markMissedBookings      <- GET /api/bookings/me, GET /api/staff/bookings,
- *                              GET /api/worker/bookings/today
+ *   recreateRecurringItems <- GET /api/items, GET /api/staff/items
+ *   markMissedBookings     <- GET /api/bookings/me, GET /api/staff/bookings,
+ *                             GET /api/worker/bookings/today
  *
  * Mess staff can also force the missed check with
  * POST /api/staff/bookings/trigger-missed.
@@ -28,7 +28,7 @@ export const RECURRING_JOB_INTERVAL_SECONDS = 15 * 60;
 export const MISSED_JOB_INTERVAL_SECONDS = 5 * 60;
 export const PURGE_JOB_INTERVAL_SECONDS = 24 * 60 * 60;
 
-/** Run the recurring-items job if its throttle interval has elapsed. Never throws. */
+/** Run the weekly-occurrence job if its throttle interval has elapsed. Never throws. */
 export async function ensureRecurringItemsFresh(): Promise<void> {
   try {
     if (await tryAcquireThrottle(RECURRING_JOB_KEY, RECURRING_JOB_INTERVAL_SECONDS)) {

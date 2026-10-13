@@ -1,6 +1,11 @@
 /**
- * PUT    /api/staff/items/{item_id} - partial update.
- * DELETE /api/staff/items/{item_id} - soft delete (deactivate).
+ * PUT    /api/staff/items/{item_id} - partial update. For a weekly rule the
+ *        change (name, price, meal, close time, active flag) also applies to its
+ *        upcoming occurrences that have no bookings yet; moving the rule to
+ *        another weekday drops those occurrences and regenerates them.
+ * DELETE /api/staff/items/{item_id}            - stop / deactivate (soft).
+ * DELETE /api/staff/items/{item_id}?permanent=true - remove the row for good;
+ *        refused while the item has bookings.
  * Port of routers/staff.py::update_item / delete_item.
  */
 
@@ -8,17 +13,23 @@ import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/server/auth/guard";
-import { MS_PER_HOUR, weekdayMon0 } from "@/lib/server/dates";
+import { weekdayMon0 } from "@/lib/server/dates";
 import { getDb } from "@/lib/server/db/client";
 import { extrasItems } from "@/lib/server/db/schema";
+import {
+  BOOKING_WINDOW_MS,
+  computePrepTime,
+  countBookings,
+  deleteFutureUnbookedOccurrences,
+  propagateRuleEdit,
+} from "@/lib/server/extras";
 import { handleRoute, httpError, json, message, parseIntParam, parseJsonBody } from "@/lib/server/http";
+import { recreateRecurringItems } from "@/lib/server/jobs";
 import { itemUpdateSchema } from "@/lib/server/schemas/extras";
 import { toItemResponse } from "@/lib/server/serializers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const BOOKING_WINDOW_MS = 48 * MS_PER_HOUR;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -35,6 +46,7 @@ export const PUT = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
   const { id } = await ctx.params;
   const itemId = parseIntParam(id, "item_id");
   const body = await parseJsonBody(req, itemUpdateSchema);
+  const db = getDb();
 
   const item = await loadItem(itemId);
 
@@ -58,13 +70,9 @@ export const PUT = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
     next.recurringWeekday = weekdayMon0(body.date);
   }
   if (body.is_active != null) next.isActive = body.is_active;
+  next.prepTimeMins = computePrepTime(next.opensAt, next.closesAt);
 
-  next.prepTimeMins = Math.max(
-    Math.floor((next.closesAt.getTime() - next.opensAt.getTime()) / 60_000),
-    0
-  );
-
-  const [updated] = await getDb()
+  const [updated] = await db
     .update(extrasItems)
     .set({
       name: next.name,
@@ -81,6 +89,20 @@ export const PUT = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
     .where(eq(extrasItems.id, item.id))
     .returning();
 
+  if (item.isRecurring) {
+    const movedDay =
+      updated.isRecurring && updated.recurringWeekday !== item.recurringWeekday;
+    if (movedDay || !updated.isRecurring) {
+      // Old-weekday occurrences nobody booked are no longer wanted.
+      await deleteFutureUnbookedOccurrences(db, item);
+    } else {
+      await propagateRuleEdit(db, item, updated);
+    }
+  }
+  if (updated.isRecurring && updated.isActive) {
+    await recreateRecurringItems(db);
+  }
+
   return json(toItemResponse(updated));
 });
 
@@ -88,11 +110,37 @@ export const DELETE = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
   await requireRole(req, "mess_staff");
   const { id } = await ctx.params;
   const itemId = parseIntParam(id, "item_id");
+  const permanent = ["1", "true"].includes(req.nextUrl.searchParams.get("permanent") ?? "");
+  const db = getDb();
 
   const item = await loadItem(itemId);
 
+  if (permanent) {
+    const bookings = await countBookings(db, item.id);
+    if (bookings > 0) {
+      httpError(
+        409,
+        `This item has ${bookings} booking${bookings === 1 ? "" : "s"} and cannot be deleted. Stop it instead, or clear its bookings first.`
+      );
+    }
+    if (item.isRecurring) {
+      await deleteFutureUnbookedOccurrences(db, item);
+    }
+    await db.delete(extrasItems).where(eq(extrasItems.id, item.id));
+    return message("Item deleted permanently.");
+  }
+
   // Soft delete: keep booking history intact.
-  await getDb().update(extrasItems).set({ isActive: false }).where(eq(extrasItems.id, item.id));
+  const [updated] = await db
+    .update(extrasItems)
+    .set({ isActive: false })
+    .where(eq(extrasItems.id, item.id))
+    .returning();
+
+  // A stopped weekly rule takes its unbooked upcoming occurrences with it.
+  if (item.isRecurring) {
+    await propagateRuleEdit(db, item, updated);
+  }
 
   return message("Item deactivated.");
 });

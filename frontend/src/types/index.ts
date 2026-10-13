@@ -47,6 +47,8 @@ export interface ExtrasItem {
   recurring_weekday: number | null;
   is_active: boolean;
   created_at: string;
+  /** Live (non-cancelled) bookings; present on staff views only. */
+  bookings_count?: number;
 }
 
 // ─── Bookings ──────────────────────────────────────────

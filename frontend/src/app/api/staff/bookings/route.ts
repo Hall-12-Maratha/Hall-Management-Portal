@@ -1,9 +1,10 @@
 /**
- * GET /api/staff/bookings?date&item_id&search - every booking with student and
- * item details, newest first. Port of routers/staff.py::list_all_bookings.
+ * GET /api/staff/bookings?date&start_date&end_date&item_id&search - bookings
+ * with student and item details, newest first.
+ * Port of routers/staff.py::list_all_bookings.
  */
 
-import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lte, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/server/auth/guard";
@@ -24,6 +25,8 @@ export const GET = handleRoute(async (req: NextRequest) => {
 
   const conditions: SQL[] = [];
   if (query.date) conditions.push(eq(extrasItems.date, query.date));
+  if (query.start_date) conditions.push(gte(extrasItems.date, query.start_date));
+  if (query.end_date) conditions.push(lte(extrasItems.date, query.end_date));
   if (query.item_id) conditions.push(eq(extrasBookings.itemId, query.item_id));
   if (query.search) {
     const term = `%${query.search}%`;

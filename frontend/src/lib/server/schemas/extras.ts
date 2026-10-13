@@ -46,9 +46,11 @@ export const bookingRangeQuerySchema = z.object({
   end_date: ymdDate.optional(),
 });
 
-/** GET /api/staff/bookings?date&item_id&search */
+/** GET /api/staff/bookings?date&start_date&end_date&item_id&search */
 export const staffBookingsQuerySchema = z.object({
   date: ymdDate.optional(),
+  start_date: ymdDate.optional(),
+  end_date: ymdDate.optional(),
   item_id: queryInt.optional(),
   search: z.string().optional(),
 });

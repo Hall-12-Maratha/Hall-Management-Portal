@@ -4,7 +4,8 @@
 **Implementation:** `frontend/src/app/api/staff/items/route.ts`
 **FastAPI origin:** `backend/app/routers/staff.py::list_all_items`
 
-Every extras item (active and inactive), newest first.
+Every extras item (active and inactive) with its live bookings count, newest
+service date first.
 
 ## Auth
 
@@ -17,7 +18,8 @@ No parameters.
 
 ## Response
 
-`200` list of ItemResponse ordered by `created_at` descending.
+`200` list of ItemResponse plus `bookings_count` (bookings whose status is not
+`cancelled`), ordered by `date` descending then `created_at` descending.
 
 ## Errors
 
@@ -27,7 +29,8 @@ No parameters.
 
 ## Side effects
 
-- May run the recurring-items job first (throttled to once per 15 minutes).
+- May first generate upcoming occurrences of weekly items (throttled to once
+  per 15 minutes).
 
 ## Business rules
 
@@ -35,4 +38,4 @@ No parameters.
 
 ## Changes vs FastAPI
 
-- Lazy recurring-items maintenance (see Side effects).
+- Adds `bookings_count` and orders by service date.

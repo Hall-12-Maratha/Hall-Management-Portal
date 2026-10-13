@@ -13,7 +13,8 @@ Every booking with student and item details, newest first.
 
 ## Request
 
-- Query params (all optional): `date` (YYYY-MM-DD, item meal date), `item_id`
+- Query params (all optional): `date` (YYYY-MM-DD, exact service date),
+  `start_date` / `end_date` (YYYY-MM-DD, inclusive service-date range), `item_id`
   (integer), `search` (case-insensitive substring of student name or identifier).
 
 ## Response
@@ -45,4 +46,5 @@ Every booking with student and item details, newest first.
 
 ## Changes vs FastAPI
 
-- Single joined query instead of per-row lookups; lazy missed-bookings maintenance.
+- Single joined query instead of per-row lookups; lazy missed-bookings maintenance;
+  optional `start_date` / `end_date` range filter.

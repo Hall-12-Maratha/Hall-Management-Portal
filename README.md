@@ -42,7 +42,7 @@ flowchart TD
     subgraph Vercel [Next.js app - frontend/]
         UI[App Router pages\nclient components]
         API[Route handlers /api/*\nzod validation, JWT guards]
-        Jobs[Maintenance jobs\nrecurring items, missed bookings]
+        Jobs[Maintenance jobs\nweekly extras, missed bookings]
     end
 
     UI --> |same-origin fetch\nBearer access token + refresh cookie| API
@@ -106,7 +106,7 @@ Use the seeded hall_office admin (`admin@hall12`). You must change the password 
 
 1. Import the repository, set **Root Directory** to `frontend`.
 2. Add every variable from `frontend/.env.example` in Project Settings -> Environment Variables (`COOKIE_SECURE=true`).
-3. No cron or scheduler is needed: recurring-item clones and missed-booking marking run lazily when the relevant pages are opened, throttled through the database.
+3. No cron or scheduler is needed: weekly-extra occurrences and missed-booking marking are generated lazily when the relevant pages are opened, throttled through the database.
 4. Keep the Supabase project awake (free projects pause after a week of inactivity).
 
 Invocation budget: a hard page load costs one API call (`/api/auth/refresh` returns the user), there is no keep-alive ping, and in-app navigation is client-side, so ~700 daily users stay well inside the Hobby limits.
@@ -131,7 +131,7 @@ HMP/
 │   │   ├── db/client.ts           # postgres.js pool (serverless-safe singleton)
 │   │   ├── auth/                  # jwt, password hashing, cookies, guards, session
 │   │   ├── schemas/               # zod request schemas (former Pydantic models)
-│   │   ├── jobs/                  # recurring items, missed bookings, maintenance runner
+│   │   ├── jobs/                  # weekly extras, missed bookings (lazy, throttled)
 │   │   ├── http.ts                # FastAPI-style error contract, handleRoute wrapper
 │   │   ├── rate-limit.ts          # Postgres-backed rate limits and job throttle
 │   │   ├── email.ts, qr.ts, csv.ts, dates.ts, serializers.ts

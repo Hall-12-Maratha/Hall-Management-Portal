@@ -43,7 +43,8 @@ export function toUserBrief(u: UserRow): UserBrief {
   };
 }
 
-export function toItemResponse(i: ExtrasItemRow) {
+/** @param bookingsCount live (non-cancelled) bookings; included only when provided (staff views). */
+export function toItemResponse(i: ExtrasItemRow, bookingsCount?: number) {
   return {
     id: i.id,
     name: i.name,
@@ -57,6 +58,7 @@ export function toItemResponse(i: ExtrasItemRow) {
     recurring_weekday: i.recurringWeekday,
     is_active: i.isActive,
     created_at: i.createdAt.toISOString(),
+    ...(bookingsCount !== undefined ? { bookings_count: bookingsCount } : {}),
   };
 }
 

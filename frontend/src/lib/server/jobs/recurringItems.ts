@@ -1,69 +1,83 @@
 /**
- * Recurring extras items job (port of scheduler.recreate_recurring_items).
+ * Weekly extras: occurrence generation.
  *
- * For every active recurring template dated before today (India time) whose
- * weekday matches today, create a one-off clone for today unless an active item
- * with the same name and meal already exists for today.
+ * A weekly item is an `extras_items` row with `is_recurring = true` and
+ * `recurring_weekday` set; its own `date` is its first service day. Every
+ * later week gets a plain occurrence row (`is_recurring = false`) copied from
+ * it: same name, price, meal and close time of day, `opens_at = closes_at - 72h`.
+ *
+ * Rules:
+ * - Occurrences are created for every matching date from today up to
+ *   OCCURRENCE_HORIZON_DAYS ahead (India time), so staff can see next week's
+ *   row early; students only see it once its booking window opens.
+ * - An occurrence is never recreated: if a row with the same name, meal and
+ *   date exists in any state (even deactivated), that date is left alone, so
+ *   "skip this week" sticks.
+ * - Runs lazily from GET /api/items and GET /api/staff/items, throttled.
  */
 
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 
-import { combineDateWithUtcTime, istNow, weekdayMon0 } from "../dates";
+import { addDays, combineDateWithUtcTime, istToday, weekdayMon0 } from "../dates";
 import { getDb, type Db } from "../db/client";
 import { extrasItems, type NewExtrasItemRow } from "../db/schema";
+import { BOOKING_WINDOW_MS, computePrepTime } from "../extras";
+
+export const OCCURRENCE_HORIZON_DAYS = 7;
 
 export async function recreateRecurringItems(db: Db = getDb()): Promise<number> {
-  const { date: today, weekday: todayWeekday } = istNow();
+  const today = istToday();
+  const horizonEnd = addDays(today, OCCURRENCE_HORIZON_DAYS);
 
-  const templates = await db
+  const rules = await db
     .select()
     .from(extrasItems)
-    .where(
-      and(
-        eq(extrasItems.isRecurring, true),
-        lt(extrasItems.date, today),
-        eq(extrasItems.isActive, true)
-      )
-    );
+    .where(and(eq(extrasItems.isRecurring, true), eq(extrasItems.isActive, true)));
+  if (rules.length === 0) return 0;
 
-  const existingToday = await db
-    .select({ id: extrasItems.id, name: extrasItems.name, mealType: extrasItems.mealType })
+  // Every row (active or not) in the horizon: existing occurrences are never duplicated.
+  const existing = await db
+    .select({ name: extrasItems.name, mealType: extrasItems.mealType, date: extrasItems.date })
     .from(extrasItems)
-    .where(and(eq(extrasItems.isActive, true), eq(extrasItems.date, today)));
+    .where(and(gte(extrasItems.date, today), lte(extrasItems.date, horizonEnd)));
+  const present = new Set(existing.map((row) => `${row.name}|${row.mealType}|${row.date}`));
 
-  const present = new Set(existingToday.map((row) => `${row.name}|${row.mealType}`));
   const clones: NewExtrasItemRow[] = [];
 
-  for (const template of templates) {
-    const targetWeekday = template.recurringWeekday ?? weekdayMon0(template.date);
-    if (targetWeekday !== todayWeekday) continue;
+  for (const rule of rules) {
+    const weekday = rule.recurringWeekday ?? weekdayMon0(rule.date);
 
-    const key = `${template.name}|${template.mealType}`;
-    if (present.has(key)) continue;
+    for (let offset = 0; offset <= OCCURRENCE_HORIZON_DAYS; offset++) {
+      const date = addDays(today, offset);
+      if (weekdayMon0(date) !== weekday) continue;
+      if (date <= rule.date) continue; // the rule row itself is the first occurrence
 
-    const windowMs = template.closesAt.getTime() - template.opensAt.getTime();
-    const closesAt = combineDateWithUtcTime(today, template.closesAt);
-    const opensAt = new Date(closesAt.getTime() - windowMs);
+      const key = `${rule.name}|${rule.mealType}|${date}`;
+      if (present.has(key)) continue;
 
-    clones.push({
-      name: template.name,
-      price: template.price,
-      date: today,
-      mealType: template.mealType,
-      opensAt,
-      closesAt,
-      prepTimeMins: template.prepTimeMins,
-      isRecurring: false,
-      recurringWeekday: null,
-      isActive: true,
-      createdBy: template.createdBy,
-    });
-    present.add(key);
+      const closesAt = combineDateWithUtcTime(date, rule.closesAt);
+      const opensAt = new Date(closesAt.getTime() - BOOKING_WINDOW_MS);
+
+      clones.push({
+        name: rule.name,
+        price: rule.price,
+        date,
+        mealType: rule.mealType,
+        opensAt,
+        closesAt,
+        prepTimeMins: computePrepTime(opensAt, closesAt),
+        isRecurring: false,
+        recurringWeekday: null,
+        isActive: true,
+        createdBy: rule.createdBy,
+      });
+      present.add(key);
+    }
   }
 
   if (clones.length > 0) {
     await db.insert(extrasItems).values(clones);
-    console.info(`[jobs] Created ${clones.length} recurring item clone(s) for ${today}.`);
+    console.info(`[jobs] Created ${clones.length} weekly occurrence(s) through ${horizonEnd}.`);
   }
 
   return clones.length;
