@@ -22,6 +22,8 @@ const nextConfig: NextConfig = {
       { source: "/(.*)", headers: securityHeaders },
       // API responses must never be cached by intermediaries.
       { source: "/api/(.*)", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      // The service worker must be re-fetched on every check so updates roll out immediately.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
     ];
   },
 };
