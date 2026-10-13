@@ -22,7 +22,7 @@ Every booking with student and item details, newest first.
 `200` list of StaffBookingResponse ordered by `booked_at` descending:
 
 ```json
-{ "id": 9, "student_identifier": "230001@iitk.ac.in", "student_name": "Test Student",
+{ "id": 9, "student_identifier": "abc24@iitk.ac.in", "student_name": "Test Student", "student_roll_no": "230001",
   "item_name": "Paneer Tikka", "item_date": "2026-10-13", "meal_type": "dinner",
   "qty": 3, "total_price": 135, "status": "served",
   "booked_at": "2026-10-12T10:00:00.000Z", "qr_used_at": "2026-10-13T13:00:00.000Z",

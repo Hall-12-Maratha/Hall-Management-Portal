@@ -10,6 +10,9 @@ import { useToast } from "@/components/ui/Toast";
 import { getTodayInIndia, parseApiDate } from "@/lib/utils";
 import type { StaffBooking } from "@/types";
 
+const rollOf = (b: StaffBooking) =>
+  (b.student_roll_no || (b.student_identifier.includes("@") ? b.student_identifier.split("@")[0] : b.student_identifier)).toUpperCase();
+
 export default function StaffBookingsPage() {
   const [bookings, setBookings] = useState<StaffBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,7 +129,7 @@ export default function StaffBookingsPage() {
       b.meal_type,
       b.item_name,
       b.student_name,
-      b.student_identifier.includes("@") ? b.student_identifier.split("@")[0].toUpperCase() : b.student_identifier.toUpperCase(),
+      rollOf(b),
       String(b.qty),
       b.status,
       new Date(b.booked_at).toLocaleString("en-IN"),
@@ -160,9 +163,7 @@ export default function StaffBookingsPage() {
       if (statusFilter !== "All" && b.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
       // Search filter (client-side: matches name, roll no, or item name)
       if (query) {
-        const rollNo = b.student_identifier.includes("@")
-          ? b.student_identifier.split("@")[0].toLowerCase()
-          : b.student_identifier.toLowerCase();
+        const rollNo = rollOf(b).toLowerCase();
         const matchesName = b.student_name.toLowerCase().includes(query);
         const matchesRoll = rollNo.includes(query);
         const matchesItem = b.item_name.toLowerCase().includes(query);
@@ -387,7 +388,7 @@ export default function StaffBookingsPage() {
                   <td className="px-4 py-3 text-text-primary font-bold">{b.item_name}</td>
                   <td className="px-4 py-3 text-text-primary">{b.student_name}</td>
                   <td className="px-4 py-3 text-text-secondary font-mono text-xs">
-                    {b.student_identifier.includes('@') ? b.student_identifier.split('@')[0].toUpperCase() : b.student_identifier.toUpperCase()}
+                    {rollOf(b)}
                   </td>
                   <td className="px-4 py-3 text-text-primary font-semibold">{b.qty}</td>
                   <td className="px-4 py-3">

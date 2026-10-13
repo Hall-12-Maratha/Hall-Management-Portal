@@ -37,7 +37,7 @@ export const GET = handleRoute(async (req: NextRequest) => {
     .select({
       booking: extrasBookings,
       item: extrasItems,
-      student: { identifier: users.identifier, name: users.name },
+      student: { identifier: users.identifier, name: users.name, rollNo: users.rollNo },
     })
     .from(extrasBookings)
     .innerJoin(users, eq(extrasBookings.studentId, users.id))

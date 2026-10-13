@@ -82,12 +82,13 @@ export function toBookingResponse(b: ExtrasBookingRow, item: ExtrasItemRow) {
 export function toStaffBookingResponse(
   b: ExtrasBookingRow,
   item: ExtrasItemRow | null,
-  student: Pick<UserRow, "identifier" | "name"> | null
+  student: Pick<UserRow, "identifier" | "name" | "rollNo"> | null
 ) {
   return {
     id: b.id,
     student_identifier: student?.identifier ?? "Unknown",
     student_name: student?.name ?? "Unknown",
+    student_roll_no: student?.rollNo ?? null,
     item_name: item?.name ?? "Unknown",
     item_date: item?.date ?? null,
     meal_type: item?.mealType ?? "Unknown",

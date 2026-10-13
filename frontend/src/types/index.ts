@@ -76,6 +76,8 @@ export interface StaffBooking {
   id: number;
   student_identifier: string;
   student_name: string;
+  /** Roll number from the student record (null for legacy accounts without one). */
+  student_roll_no: string | null;
   item_name: string;
   item_date: string | null;
   meal_type: string;
