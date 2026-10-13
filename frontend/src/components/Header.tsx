@@ -22,8 +22,7 @@ export default function Header() {
             width={36}
             height={36}
             className="rounded-lg"
-            priority
-          />
+            priority unoptimized />
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-text-primary leading-tight">
               Hall 12 - Marathas

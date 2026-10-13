@@ -3,46 +3,78 @@
 /**
  * Student Dashboard - notice board, the weekly menu starting from today, then
  * the wastage summary. This is the landing page for students after login.
+ *
+ * Loads everything with ONE request (GET /api/dashboard) and keeps the result
+ * in the browser for an hour, so reopening the app does not cost a server
+ * request. "Refresh" forces a fresh load.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { clearCache, readCache, timeAgo, writeCache } from "@/lib/clientCache";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate, formatDateTime, getDayName, getTodayWeekday } from "@/lib/utils";
-import type { DashboardSummary, MenuSlot, WeeklyMenuResponse } from "@/types";
+import type { DashboardSummary, MenuSlot, NoticeResponse } from "@/types";
 import NoticeBoard from "@/components/NoticeBoard";
 
+interface DashboardPayload {
+  summary: DashboardSummary;
+  menu: { slots: MenuSlot[] };
+  notices: NoticeResponse[];
+  generated_at: string;
+}
+
+const CACHE_KEY = "student-dashboard";
+const CACHE_MAX_AGE_MS = 60 * 60 * 1000;
+
 export default function StudentDashboard() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [menuSlots, setMenuSlots] = useState<MenuSlot[]>([]);
+  const [data, setData] = useState<DashboardPayload | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const load = useCallback(
+    async (force = false) => {
+      if (!force) {
+        const cached = readCache<DashboardPayload>(CACHE_KEY, CACHE_MAX_AGE_MS);
+        if (cached) {
+          setData(cached.value);
+          setSavedAt(cached.savedAt);
+          setIsLoading(false);
+          return;
+        }
+      }
+      setIsLoading(true);
       try {
-        const [summaryData, menuData] = await Promise.all([
-          apiFetch<DashboardSummary>("/dashboard/summary"),
-          apiFetch<WeeklyMenuResponse>("/menu/weekly"),
-        ]);
-        setSummary(summaryData);
-        setMenuSlots(menuData.slots);
+        const fresh = await apiFetch<DashboardPayload>("/dashboard");
+        setData(fresh);
+        setSavedAt(Date.now());
+        writeCache(CACHE_KEY, fresh);
       } catch (err: unknown) {
         const error = err as Error;
         toast(error.message || "Failed to load dashboard.", "error");
       } finally {
         setIsLoading(false);
       }
-    };
-    fetchData();
-  }, [toast]);
+    },
+    [toast]
+  );
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  const refresh = () => {
+    clearCache(CACHE_KEY);
+    load(true);
+  };
 
   const todayWeekday = getTodayWeekday();
-
   // Days in display order: today first, then the following six days.
   const orderedDays = Array.from({ length: 7 }, (_, i) => (todayWeekday + i) % 7);
 
-  if (isLoading) {
+  if (isLoading || !data) {
     return (
       <div className="space-y-4 animate-subtle-pulse">
         <div className="glass-card h-24 rounded-xl" />
@@ -56,20 +88,33 @@ export default function StudentDashboard() {
     );
   }
 
+  const { summary, notices } = data;
+
   // Build menu grid: organize slots by day
   const menuByDay: Record<number, Record<string, string>> = {};
   for (let d = 0; d < 7; d++) {
     menuByDay[d] = { breakfast: "", lunch: "", dinner: "" };
   }
-  menuSlots.forEach((slot) => {
+  data.menu.slots.forEach((slot) => {
     menuByDay[slot.day_of_week][slot.meal_type] = slot.description;
   });
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end -mb-4">
+        <button
+          type="button"
+          onClick={refresh}
+          className="text-[11px] text-text-muted hover:text-accent transition-colors"
+          title="Reload notices, menu and wastage figures"
+        >
+          {savedAt ? `Updated ${timeAgo(savedAt)} · Refresh` : "Refresh"}
+        </button>
+      </div>
+
       {/* 1. Notice Board */}
       <section>
-        <NoticeBoard />
+        <NoticeBoard notices={notices} onChanged={refresh} />
       </section>
 
       {/* 2. Menu for the coming days, starting today */}
@@ -84,15 +129,13 @@ export default function StudentDashboard() {
             return (
               <div
                 key={day}
-                className={`glass-card rounded-xl overflow-hidden transition-colors ${isToday ? "border-accent/40 bg-accent-bg" : ""
-                  }`}
+                className={`glass-card rounded-xl overflow-hidden transition-colors ${
+                  isToday ? "border-accent/40 bg-accent-bg" : ""
+                }`}
               >
                 <div className="p-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className={`text-sm font-semibold ${isToday ? "text-accent" : "text-text-primary"
-                        }`}
-                    >
+                    <span className={`text-sm font-semibold ${isToday ? "text-accent" : "text-text-primary"}`}>
                       {getDayName(day)}
                     </span>
                     {isToday && (
@@ -130,13 +173,13 @@ export default function StudentDashboard() {
       {/* 3. Wastage Summary */}
       <section>
         <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
-          Mess Wastage and BDMR
+          Mess Wastage
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="glass-card p-4 rounded-xl">
             <p className="text-xs text-text-muted mb-1">Avg. BDMR (last 7 days)</p>
             <p className="text-2xl font-bold text-accent">
-              {summary?.avg_bdmr != null ? `INR ${summary.avg_bdmr.toFixed(2)}` : "-"}
+              {summary.avg_bdmr != null ? `INR ${summary.avg_bdmr.toFixed(2)}` : "-"}
             </p>
             <p className="text-[10px] text-text-muted mt-1">Basic Daily Menu Rate</p>
           </div>
@@ -144,9 +187,9 @@ export default function StudentDashboard() {
           <div className="glass-card p-4 rounded-xl">
             <p className="text-xs text-text-muted mb-1">Plain Wastage (kg)</p>
             <p className="text-2xl font-bold text-text-primary">
-              {summary?.plain_wastage != null ? `${summary.plain_wastage.toFixed(2)} kg` : "-"}
+              {summary.plain_wastage != null ? `${summary.plain_wastage.toFixed(2)} kg` : "-"}
             </p>
-            {summary?.wastage_date && (
+            {summary.wastage_date && (
               <p className="text-[10px] text-text-muted mt-1">Data from {formatDate(summary.wastage_date)}</p>
             )}
           </div>
@@ -154,15 +197,15 @@ export default function StudentDashboard() {
           <div className="glass-card p-4 rounded-xl">
             <p className="text-xs text-text-muted mb-1">Plate Wastage (kg)</p>
             <p className="text-2xl font-bold text-text-primary">
-              {summary?.plate_wastage != null ? `${summary.plate_wastage.toFixed(2)} kg` : "-"}
+              {summary.plate_wastage != null ? `${summary.plate_wastage.toFixed(2)} kg` : "-"}
             </p>
-            {summary?.wastage_date && (
+            {summary.wastage_date && (
               <p className="text-[10px] text-text-muted mt-1">Data from {formatDate(summary.wastage_date)}</p>
             )}
           </div>
         </div>
 
-        {summary?.last_updated && (
+        {summary.last_updated && (
           <p className="text-[11px] text-text-muted mt-2">
             Last updated: {formatDateTime(summary.last_updated)}
           </p>

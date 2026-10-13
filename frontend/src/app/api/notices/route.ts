@@ -4,10 +4,10 @@
  * Port of routers/notices.py::get_all_notices / create_notice.
  */
 
-import { desc } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import { requireUser } from "@/lib/server/auth/guard";
+import { getNotices } from "@/lib/server/dashboard";
 import { getDb } from "@/lib/server/db/client";
 import { notices } from "@/lib/server/db/schema";
 import { handleRoute, httpError, json, parseJsonBody } from "@/lib/server/http";
@@ -19,9 +19,7 @@ export const dynamic = "force-dynamic";
 
 export const GET = handleRoute(async (req: NextRequest) => {
   await requireUser(req);
-
-  const rows = await getDb().select().from(notices).orderBy(desc(notices.createdAt));
-  return json(rows.map(toNotice));
+  return json(await getNotices());
 });
 
 export const POST = handleRoute(async (req: NextRequest) => {

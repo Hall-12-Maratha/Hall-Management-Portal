@@ -135,8 +135,7 @@ export default function ForgotPasswordPage() {
             width={64}
             height={64}
             className="rounded-2xl mb-3"
-            priority
-          />
+            priority unoptimized />
           <h1 className="text-lg font-bold text-text-primary">
             Forgot Password
           </h1>

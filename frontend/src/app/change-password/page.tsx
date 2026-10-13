@@ -75,8 +75,7 @@ export default function ChangePasswordPage() {
             width={64}
             height={64}
             className="rounded-2xl mb-3"
-            priority
-          />
+            priority unoptimized />
           <h1 className="text-lg font-bold text-text-primary">
             Change Password
           </h1>

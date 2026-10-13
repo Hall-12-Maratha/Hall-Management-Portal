@@ -36,6 +36,18 @@ into the browser bundle at build time; everything else is server-only.
 - Money columns are `numeric` strings in Drizzle; convert with `money()` from
   `src/lib/server/serializers.ts` before responding.
 
+## Request budget (Vercel Hobby)
+
+Every API call is a function invocation and every request counts against the
+CDN quota, so:
+
+- Never poll or auto-refresh. Fetch on user action (page open, button).
+- Prefer one endpoint per screen (see `GET /api/dashboard`) over several small ones.
+- Cache rarely-changing data in the browser with `src/lib/clientCache.ts`
+  (menu, notices, summary are cached for an hour on the dashboard).
+- Serve the logo and other static images without Next image optimisation
+  (`unoptimized`), which has its own small quota.
+
 ## Local Postgres without Docker
 
 `@electric-sql/pglite-socket` serves a wire-compatible Postgres from memory:

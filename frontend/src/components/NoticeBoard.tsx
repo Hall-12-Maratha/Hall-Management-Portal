@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Notice board. Fetches notices itself unless the parent passes them in
+ * (`notices` prop), in which case it reports changes through `onChanged`.
+ */
+
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -7,12 +12,20 @@ import { useToast } from "@/components/ui/Toast";
 import type { NoticeResponse } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 
-export default function NoticeBoard() {
+interface NoticeBoardProps {
+  /** When provided, the board renders these and never fetches on its own. */
+  notices?: NoticeResponse[];
+  /** Called after a notice is posted or deleted (parent should refetch). */
+  onChanged?: () => void;
+}
+
+export default function NoticeBoard({ notices: external, onChanged }: NoticeBoardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [notices, setNotices] = useState<NoticeResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
+  const controlled = external !== undefined;
+  const [ownNotices, setOwnNotices] = useState<NoticeResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(!controlled);
+
   // Posting states
   const [isPosting, setIsPosting] = useState(false);
   const [title, setTitle] = useState("");
@@ -20,12 +33,13 @@ export default function NoticeBoard() {
   const [link, setLink] = useState("");
 
   const canManage = user?.role === "hall_office" || user?.role === "mess_staff";
+  const notices = controlled ? external : ownNotices;
 
   const fetchNotices = async () => {
     setIsLoading(true);
     try {
       const data = await apiFetch<NoticeResponse[]>("/notices");
-      setNotices(data);
+      setOwnNotices(data);
     } catch (err: unknown) {
       toast((err as Error).message || "Failed to load notices", "error");
     } finally {
@@ -34,10 +48,16 @@ export default function NoticeBoard() {
   };
 
   useEffect(() => {
+    if (controlled) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [controlled]);
+
+  const refresh = () => {
+    if (controlled) onChanged?.();
+    else fetchNotices();
+  };
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +77,7 @@ export default function NoticeBoard() {
       setDescription("");
       setLink("");
       setIsPosting(false);
-      fetchNotices();
+      refresh();
     } catch (err: unknown) {
       toast((err as Error).message || "Failed to post notice", "error");
     }
@@ -68,7 +88,7 @@ export default function NoticeBoard() {
     try {
       await apiFetch(`/notices/${id}`, { method: "DELETE" });
       toast("Notice deleted", "success");
-      fetchNotices();
+      refresh();
     } catch (err: unknown) {
       toast((err as Error).message || "Failed to delete notice", "error");
     }
@@ -139,7 +159,7 @@ export default function NoticeBoard() {
               )}
               <h3 className="font-semibold text-text-primary mb-1 pr-12">{notice.title}</h3>
               <p className="text-sm text-text-secondary whitespace-pre-wrap mb-2">{notice.description}</p>
-              
+
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
                 <span className="text-xs text-text-muted">{formatDateTime(notice.created_at)}</span>
                 {notice.link && (

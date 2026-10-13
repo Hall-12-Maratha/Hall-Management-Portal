@@ -214,7 +214,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo + title */}
         <div className="flex flex-col items-center mb-8">
-          <Image src="/logo.webp" alt="Hall 12 Marathas" width={80} height={80} className="rounded-2xl mb-4" priority />
+          <Image src="/logo.webp" alt="Hall 12 Marathas" width={80} height={80} className="rounded-2xl mb-4" priority unoptimized />
           <h1 className="text-xl font-bold text-text-primary">{title}</h1>
           <p className="text-sm text-text-muted mt-1 text-center">{subtitle}</p>
         </div>

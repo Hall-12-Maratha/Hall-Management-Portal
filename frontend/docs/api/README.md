@@ -58,6 +58,7 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 
 | Method | Path | Roles | Doc |
 |---|---|---|---|
+| GET | /api/dashboard | student | [GET_dashboard.md](dashboard/GET_dashboard.md) |
 | GET | /api/dashboard/summary | student | [GET_dashboard-summary.md](dashboard/GET_dashboard-summary.md) |
 
 ### menu (`docs/api/menu/`)

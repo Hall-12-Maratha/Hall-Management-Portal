@@ -42,7 +42,11 @@ export default function InstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (isStandalone() || recentlyDismissed()) return;
+    if (isStandalone()) return;
+    // A link such as /?install=1 (from a notice or email) always shows the
+    // banner, even if it was dismissed earlier.
+    const forced = new URLSearchParams(window.location.search).has("install");
+    if (!forced && recentlyDismissed()) return;
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
@@ -52,18 +56,21 @@ export default function InstallPrompt() {
     window.addEventListener("beforeinstallprompt", onPrompt);
 
     // iOS Safari never fires beforeinstallprompt; show the manual hint after a
-    // short delay so it does not compete with the page's first paint.
+    // short delay so it does not compete with the page's first paint. When the
+    // banner was requested via the link, show the hint on any browser that has
+    // not offered the install event by then (e.g. Chrome's cooldown).
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const iosTimer = isIos
-      ? window.setTimeout(() => {
-          setShowIosHint(true);
-          setVisible(true);
-        }, 1500)
-      : undefined;
+    const hintTimer =
+      isIos || forced
+        ? window.setTimeout(() => {
+            setShowIosHint(true);
+            setVisible(true);
+          }, 1500)
+        : undefined;
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);
-      if (iosTimer !== undefined) window.clearTimeout(iosTimer);
+      if (hintTimer !== undefined) window.clearTimeout(hintTimer);
     };
   }, []);
 
@@ -97,7 +104,9 @@ export default function InstallPrompt() {
           <p className="text-sm font-semibold text-text-primary">Add Hall 12 to your home screen</p>
           <p className="text-xs text-text-muted mt-1">
             {showIosHint && !installEvent
-              ? "Tap Share, then “Add to Home Screen” to use the portal like an app."
+              ? /iphone|ipad|ipod/i.test(navigator.userAgent)
+                ? "Tap Share, then “Add to Home Screen” to use the portal like an app."
+                : "Open your browser menu and choose “Install app” or “Add to Home screen”."
               : "Faster access to the menu, extras and your bill, right from your phone."}
           </p>
         </div>
