@@ -34,6 +34,14 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
   `GET /api/worker/bookings/today`, each throttled through `rate_limits`
   (`job:*` keys) so it runs at most once per interval across all instances.
   Mess staff can force the missed check with `POST /api/staff/bookings/trigger-missed`.
+  Closing-soon push reminders run from `GET /api/dashboard`, `GET /api/items`
+  and `GET /api/staff/items` (`job:closing_reminders`, 5 minutes) and only
+  when the VAPID variables are set.
+- **Push notifications** (Web Push, VAPID) go to every subscribed device of
+  active students: on every public notice, on each personal notice (content-free
+  payload) and once per extras item 60 minutes before its booking window closes.
+  Sending happens after the response (`after()` from next/server) and is
+  best-effort; gone endpoints (404/410) are deleted.
 
 ## Endpoints
 
@@ -128,6 +136,10 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 | GET | /api/hall-office/staff | hall_office | [GET_hall-office-staff.md](hall-office/GET_hall-office-staff.md) |
 | PATCH | /api/hall-office/staff/{user_id} | hall_office | [PATCH_hall-office-staff-[user_id].md](hall-office/PATCH_hall-office-staff-[user_id].md) |
 | DELETE | /api/hall-office/staff/{user_id} | hall_office | [DELETE_hall-office-staff-[user_id].md](hall-office/DELETE_hall-office-staff-[user_id].md) |
+| POST | /api/hall-office/personal-notices/upload | hall_office | [POST_hall-office-personal-notices-upload.md](hall-office/POST_hall-office-personal-notices-upload.md) |
+| POST | /api/hall-office/personal-notices | hall_office | [POST_hall-office-personal-notices.md](hall-office/POST_hall-office-personal-notices.md) |
+| GET | /api/hall-office/personal-notices | hall_office | [GET_hall-office-personal-notices.md](hall-office/GET_hall-office-personal-notices.md) |
+| DELETE | /api/hall-office/personal-notices/{id} | hall_office | [DELETE_hall-office-personal-notices-[id].md](hall-office/DELETE_hall-office-personal-notices-[id].md) |
 
 ### notices (`docs/api/notices/`)
 
@@ -136,6 +148,13 @@ an `/api` prefix. One Markdown file per endpoint lives in the folders below.
 | GET | /api/notices | any user | [GET_notices.md](notices/GET_notices.md) |
 | POST | /api/notices | hall_office, mess_staff | [POST_notices.md](notices/POST_notices.md) |
 | DELETE | /api/notices/{id} | hall_office, mess_staff | [DELETE_notices-[id].md](notices/DELETE_notices-[id].md) |
+
+### me (`docs/api/me/`)
+
+| Method | Path | Roles | Doc |
+|---|---|---|---|
+| POST | /api/me/push-subscriptions | any user | [POST_me-push-subscriptions.md](me/POST_me-push-subscriptions.md) |
+| DELETE | /api/me/push-subscriptions | any user | [DELETE_me-push-subscriptions.md](me/DELETE_me-push-subscriptions.md) |
 
 ### misc (`docs/api/misc/`)
 

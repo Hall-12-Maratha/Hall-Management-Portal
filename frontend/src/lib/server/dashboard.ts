@@ -3,12 +3,12 @@
  * (/api/dashboard/summary, /api/menu/weekly, /api/notices).
  */
 
-import { and, asc, desc, gte, lte, max } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lte, max } from "drizzle-orm";
 
 import { addDays, istToday, toIso } from "./dates";
 import { getDb, type Db } from "./db/client";
-import { notices, wastageLogs, weeklyMenu } from "./db/schema";
-import { toMenuSlot, toNotice } from "./serializers";
+import { notices, personalNotices, wastageLogs, weeklyMenu } from "./db/schema";
+import { toMenuSlot, toNotice, toPersonalNotice } from "./serializers";
 
 export interface DashboardSummary {
   avg_bdmr: number | null;
@@ -72,4 +72,25 @@ export async function getMenuSlots(db: Db = getDb()) {
 export async function getNotices(db: Db = getDb()) {
   const rows = await db.select().from(notices).orderBy(desc(notices.createdAt));
   return rows.map(toNotice);
+}
+
+/**
+ * Opaque version of the weekly menu: changes whenever any slot is edited or
+ * added. Clients cache the menu and send this back to skip re-downloading it.
+ */
+export async function getMenuVersion(db: Db = getDb()): Promise<string> {
+  const [{ total, latest }] = await db
+    .select({ total: count(), latest: max(weeklyMenu.updatedAt) })
+    .from(weeklyMenu);
+  return `${total}:${latest ? latest.getTime() : 0}`;
+}
+
+/** Notices addressed to one student, newest first. */
+export async function getPersonalNotices(studentId: number, db: Db = getDb()) {
+  const rows = await db
+    .select()
+    .from(personalNotices)
+    .where(eq(personalNotices.studentId, studentId))
+    .orderBy(desc(personalNotices.createdAt), desc(personalNotices.id));
+  return rows.map(toPersonalNotice);
 }

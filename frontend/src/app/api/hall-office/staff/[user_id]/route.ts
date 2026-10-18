@@ -15,6 +15,7 @@ import {
   extrasBookings,
   extrasItems,
   notices,
+  personalNotices,
   users,
   wastageLogs,
   weeklyMenu,
@@ -65,6 +66,7 @@ export const DELETE = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
     await tx.update(extrasBookings).set({ servedBy: null }).where(eq(extrasBookings.servedBy, user.id));
     await tx.update(extrasItems).set({ createdBy: me.id }).where(eq(extrasItems.createdBy, user.id));
     await tx.update(notices).set({ createdBy: me.id }).where(eq(notices.createdBy, user.id));
+    await tx.update(personalNotices).set({ createdBy: me.id }).where(eq(personalNotices.createdBy, user.id));
     await tx.update(weeklyMenu).set({ updatedBy: me.id }).where(eq(weeklyMenu.updatedBy, user.id));
     await tx.update(wastageLogs).set({ enteredBy: me.id }).where(eq(wastageLogs.enteredBy, user.id));
     await tx.update(users).set({ createdBy: null }).where(eq(users.createdBy, user.id));

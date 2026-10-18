@@ -10,6 +10,7 @@ import type {
   ExtrasBookingRow,
   ExtrasItemRow,
   NoticeRow,
+  PersonalNoticeRow,
   UserRow,
   WastageLogRow,
   WeeklyMenuRow,
@@ -130,6 +131,32 @@ export function toNotice(n: NoticeRow) {
     title: n.title,
     description: n.description,
     link: n.link,
+    created_at: n.createdAt.toISOString(),
+    created_by: n.createdBy,
+  };
+}
+
+/** Student view: no student fields, the reader is the addressee. */
+export function toPersonalNotice(n: PersonalNoticeRow) {
+  return {
+    id: n.id,
+    title: n.title,
+    notice: n.notice,
+    created_at: n.createdAt.toISOString(),
+  };
+}
+
+/** Hall office view: includes who the notice is for. */
+export function toPersonalNoticeAdmin(
+  n: PersonalNoticeRow,
+  student: Pick<UserRow, "rollNo" | "name"> | null
+) {
+  return {
+    id: n.id,
+    roll_no: student?.rollNo ?? null,
+    student_name: student?.name ?? "Unknown",
+    title: n.title,
+    notice: n.notice,
     created_at: n.createdAt.toISOString(),
     created_by: n.createdBy,
   };

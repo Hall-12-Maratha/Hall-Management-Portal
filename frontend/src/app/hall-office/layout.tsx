@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { label: "Roll Numbers", href: "/hall-office/roll-numbers" },
   { label: "Staff Accounts", href: "/hall-office/staff-accounts" },
   { label: "Notices", href: "/hall-office/notices" },
+  { label: "Personal Notices", href: "/hall-office/personal-notices" },
 ];
 
 export default function HallOfficeLayout({

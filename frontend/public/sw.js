@@ -6,10 +6,13 @@
  *  - icons, logo, fonts cache-first
  *  - page navigations  network-first, falling back to the cached page, then /offline.html
  *
+ * Web Push: `push` shows the server's payload {title, body, url, tag};
+ * `notificationclick` focuses an open tab of the app or opens `url`.
+ *
  * Bump CACHE_VERSION when the caching rules change; old caches are deleted on activate.
  */
 
-const CACHE_VERSION = "hmp-v1";
+const CACHE_VERSION = "hmp-v2";
 const PRECACHE = ["/offline.html", "/logo.webp", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -78,4 +81,36 @@ self.addEventListener("fetch", (event) => {
         })
     );
   }
+});
+
+self.addEventListener("push", (event) => {
+  let payload = { title: "Hall 12", body: "", url: "/student/dashboard", tag: undefined };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    // non-JSON payload: show the default title
+  }
+  const options = {
+    body: payload.body,
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: payload.tag,
+    renotify: Boolean(payload.tag),
+    data: { url: payload.url },
+  };
+  event.waitUntil(self.registration.showNotification(payload.title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((c) => c.url.startsWith(self.location.origin));
+      if (existing) {
+        return existing.navigate(target).then((c) => (c || existing).focus()).catch(() => existing.focus());
+      }
+      return self.clients.openWindow(target);
+    })
+  );
 });

@@ -105,7 +105,7 @@ Use the seeded hall_office admin (`admin@hall12`). You must change the password 
 ## Deploying to Vercel (Hobby)
 
 1. Import the repository, set **Root Directory** to `frontend`.
-2. Add every variable from `frontend/.env.example` in Project Settings -> Environment Variables (`COOKIE_SECURE=true`).
+2. Add every variable from `frontend/.env.example` in Project Settings -> Environment Variables (`COOKIE_SECURE=true`). For push notifications generate the VAPID pair once with `npx web-push generate-vapid-keys` and set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT`; the app works without them, just without notifications.
 3. No cron or scheduler is needed: weekly-extra occurrences and missed-booking marking are generated lazily when the relevant pages are opened, throttled through the database.
 4. Keep the Supabase project awake (free projects pause after a week of inactivity).
 
@@ -115,10 +115,10 @@ Invocation budget: a hard page load costs one API call (`/api/auth/refresh` retu
 
 | Role | Access |
 |---|---|
-| `hall_office` | Upload roll numbers CSV, download setup codes, create/deactivate staff accounts, post notices |
+| `hall_office` | Upload roll numbers CSV, download setup codes, create/deactivate staff accounts, post notices, send personal notices (bills, warnings) by CSV |
 | `mess_staff` | Manage extras items, view/serve/cancel bookings, approve cancellation requests, edit weekly menu, enter wastage, post notices, download CSV reports |
 | `mess_worker` | QR scanner (when enabled), today's booking queue |
-| `student` | Dashboard (wastage, menu, notices), browse/book extras, booking history, change password |
+| `student` | Dashboard (wastage, menu, notices, personal notices), browse/book extras, booking history, change password, push notifications |
 
 ## Project Structure
 

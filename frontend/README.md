@@ -43,8 +43,12 @@ CDN quota, so:
 
 - Never poll or auto-refresh. Fetch on user action (page open, button).
 - Prefer one endpoint per screen (see `GET /api/dashboard`) over several small ones.
-- Cache rarely-changing data in the browser with `src/lib/clientCache.ts`
-  (menu, notices, summary are cached for an hour on the dashboard).
+- Cache rarely-changing data in the browser with `src/lib/clientCache.ts`.
+  The dashboard keeps the weekly menu for 30 days keyed by `menu_version` and
+  sends that version back, so the server returns the menu only when it changed.
+  Notices are never cached: the board must be current on every open.
+- Push notifications are sent after the response with `after()` from
+  `next/server`, in batches, never from the request path (`src/lib/server/push.ts`).
 - Serve the logo and other static images without Next image optimisation
   (`unoptimized`), which has its own small quota.
 

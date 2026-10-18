@@ -17,7 +17,7 @@ import { getDb } from "@/lib/server/db/client";
 import { extrasBookings, extrasItems } from "@/lib/server/db/schema";
 import { BOOKING_WINDOW_MS, computePrepTime } from "@/lib/server/extras";
 import { handleRoute, httpError, json, parseJsonBody } from "@/lib/server/http";
-import { ensureRecurringItemsFresh, recreateRecurringItems } from "@/lib/server/jobs";
+import { ensureClosingRemindersFresh, ensureRecurringItemsFresh, recreateRecurringItems } from "@/lib/server/jobs";
 import { itemCreateSchema } from "@/lib/server/schemas/extras";
 import { toItemResponse } from "@/lib/server/serializers";
 
@@ -65,6 +65,7 @@ export const POST = handleRoute(async (req: NextRequest) => {
 export const GET = handleRoute(async (req: NextRequest) => {
   await requireRole(req, "mess_staff");
   await ensureRecurringItemsFresh();
+  await ensureClosingRemindersFresh();
 
   // Every item with its number of live bookings (cancelled ones excluded).
   const rows = await getDb()
