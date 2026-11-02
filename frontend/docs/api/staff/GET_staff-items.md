@@ -30,7 +30,7 @@ No parameters.
 ## Side effects
 
 - May first generate upcoming occurrences of weekly items (throttled to once
-  per 15 minutes).
+  per 15 minutes) and send the closing-soon push reminder (once per 5 minutes).
 
 ## Business rules
 

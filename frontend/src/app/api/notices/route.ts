@@ -1,16 +1,18 @@
 /**
  * GET  /api/notices - every notice, newest first (any authenticated user).
- * POST /api/notices - create a notice (hall_office or mess_staff), 201.
+ * POST /api/notices - create a notice (hall_office or mess_staff), 201, and
+ *      push it to every subscribed student after responding.
  * Port of routers/notices.py::get_all_notices / create_notice.
  */
 
-import type { NextRequest } from "next/server";
+import { after, type NextRequest } from "next/server";
 
 import { requireUser } from "@/lib/server/auth/guard";
 import { getNotices } from "@/lib/server/dashboard";
 import { getDb } from "@/lib/server/db/client";
 import { notices } from "@/lib/server/db/schema";
 import { handleRoute, httpError, json, parseJsonBody } from "@/lib/server/http";
+import { previewText, pushInBackground, pushToAllStudents } from "@/lib/server/push";
 import { noticeCreateSchema } from "@/lib/server/schemas/notice";
 import { toNotice } from "@/lib/server/serializers";
 
@@ -38,6 +40,17 @@ export const POST = handleRoute(async (req: NextRequest) => {
       createdBy: me.id,
     })
     .returning();
+
+  after(() =>
+    pushInBackground(() =>
+      pushToAllStudents({
+        title: notice.title,
+        body: previewText(notice.description),
+        url: "/student/dashboard",
+        tag: `notice-${notice.id}`,
+      })
+    )
+  );
 
   return json(toNotice(notice), 201);
 });

@@ -396,6 +396,9 @@ export default function LoginPage() {
         <p className="text-center text-sm text-text-secondary mt-8">
           Made with 💖 by your mess & canteen secretary
         </p>
+        <p className="text-center text-sm text-text-secondary mt-8">
+          UTKARSH AMAN
+        </p>
       </div>
     </div>
   );

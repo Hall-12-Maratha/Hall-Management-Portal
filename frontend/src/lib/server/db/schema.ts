@@ -19,6 +19,7 @@ import {
   boolean,
   date,
   doublePrecision,
+  index,
   integer,
   numeric,
   pgEnum,
@@ -129,6 +130,8 @@ export const extrasItems = pgTable("extras_items", {
   /** 0=Monday .. 6=Sunday */
   recurringWeekday: integer("recurring_weekday"),
   isActive: boolean("is_active").notNull(),
+  /** When the closing-soon push reminder went out (null = not yet). */
+  reminderSentAt: timestamp("reminder_sent_at", { mode: "date" }),
   createdBy: integer("created_by")
     .notNull()
     .references(() => users.id),
@@ -216,6 +219,49 @@ export const notices = pgTable("notices", {
 });
 
 // ---------------------------------------------------------------------------
+// personal_notices (NEW) - notices addressed to one student (bill, warning...).
+// Shown on that student's dashboard only.
+// ---------------------------------------------------------------------------
+
+export const personalNotices = pgTable(
+  "personal_notices",
+  {
+    id: serial("id").primaryKey(),
+    studentId: integer("student_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    notice: text("notice").notNull(),
+    createdBy: integer("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("ix_personal_notices_student_id").on(t.studentId)]
+);
+
+// ---------------------------------------------------------------------------
+// push_subscriptions (NEW) - Web Push endpoints, one row per browser/device.
+// ---------------------------------------------------------------------------
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: varchar("endpoint", { length: 1000 }).notNull(),
+    p256dh: varchar("p256dh", { length: 255 }).notNull(),
+    auth: varchar("auth", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ix_push_subscriptions_endpoint").on(t.endpoint),
+    index("ix_push_subscriptions_user_id").on(t.userId),
+  ]
+);
+// ---------------------------------------------------------------------------
 // rate_limits (NEW - replaces the FastAPI in-memory rate limiter so that
 // limits survive serverless cold starts and are shared across instances).
 // Also used as a tiny distributed throttle for the lazy maintenance jobs.
@@ -256,3 +302,5 @@ export type ExtrasBookingRow = typeof extrasBookings.$inferSelect;
 export type WeeklyMenuRow = typeof weeklyMenu.$inferSelect;
 export type WastageLogRow = typeof wastageLogs.$inferSelect;
 export type NoticeRow = typeof notices.$inferSelect;
+export type PersonalNoticeRow = typeof personalNotices.$inferSelect;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;

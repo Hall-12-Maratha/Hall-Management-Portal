@@ -36,6 +36,12 @@ const envSchema = z.object({
   SMTP_PASS: z.string().default(""),
   SMTP_FROM: z.string().default("noreply@hall12.iitk.ac.in"),
 
+  // Web Push (VAPID). All three must be set for notifications; otherwise push
+  // sending is silently skipped and subscription endpoints return 503.
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().default(""),
+  VAPID_PRIVATE_KEY: z.string().default(""),
+  VAPID_SUBJECT: z.string().default(""),
+
   SEED_ADMIN_PASSWORD: z.string().optional(),
 });
 

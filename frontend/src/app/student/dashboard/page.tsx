@@ -1,74 +1,65 @@
 "use client";
 
 /**
- * Student Dashboard - notice board, the weekly menu starting from today, then
- * the wastage summary. This is the landing page for students after login.
+ * Student Dashboard - notice board (with the student's personal notices), the
+ * weekly menu starting from today, then the wastage summary.
  *
- * Loads everything with ONE request (GET /api/dashboard) and keeps the result
- * in the browser for an hour, so reopening the app does not cost a server
- * request. "Refresh" forces a fresh load.
+ * One request per visit (GET /api/dashboard). Notices are never cached so the
+ * board is always current. The menu changes rarely, so it is kept in the
+ * browser for up to 30 days together with its `menu_version`; the version is
+ * sent with the request and the server returns the menu only when the mess
+ * has edited it since. A menu change therefore shows on the next visit with
+ * no extra request.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { clearCache, readCache, timeAgo, writeCache } from "@/lib/clientCache";
+import { readCache, writeCache } from "@/lib/clientCache";
 import { useToast } from "@/components/ui/Toast";
+import NotificationsToggle from "@/components/pwa/NotificationsToggle";
 import { formatDate, formatDateTime, getDayName, getTodayWeekday } from "@/lib/utils";
-import type { DashboardSummary, MenuSlot, NoticeResponse } from "@/types";
+import type { DashboardPayload, MenuSlot } from "@/types";
 import NoticeBoard from "@/components/NoticeBoard";
 
-interface DashboardPayload {
-  summary: DashboardSummary;
-  menu: { slots: MenuSlot[] };
-  notices: NoticeResponse[];
-  generated_at: string;
+interface CachedMenu {
+  version: string;
+  slots: MenuSlot[];
 }
 
-const CACHE_KEY = "student-dashboard";
-const CACHE_MAX_AGE_MS = 60 * 60 * 1000;
+const MENU_CACHE_KEY = "student-menu";
+const MENU_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export default function StudentDashboard() {
   const [data, setData] = useState<DashboardPayload | null>(null);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [menuSlots, setMenuSlots] = useState<MenuSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const load = useCallback(
-    async (force = false) => {
-      if (!force) {
-        const cached = readCache<DashboardPayload>(CACHE_KEY, CACHE_MAX_AGE_MS);
-        if (cached) {
-          setData(cached.value);
-          setSavedAt(cached.savedAt);
-          setIsLoading(false);
-          return;
-        }
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    const cachedMenu = readCache<CachedMenu>(MENU_CACHE_KEY, MENU_CACHE_MAX_AGE_MS)?.value ?? null;
+    try {
+      const query = cachedMenu ? `?menu_version=${encodeURIComponent(cachedMenu.version)}` : "";
+      const fresh = await apiFetch<DashboardPayload>(`/dashboard${query}`);
+      setData(fresh);
+      if (fresh.menu) {
+        setMenuSlots(fresh.menu.slots);
+        writeCache<CachedMenu>(MENU_CACHE_KEY, { version: fresh.menu_version, slots: fresh.menu.slots });
+      } else {
+        setMenuSlots(cachedMenu?.slots ?? []);
       }
-      setIsLoading(true);
-      try {
-        const fresh = await apiFetch<DashboardPayload>("/dashboard");
-        setData(fresh);
-        setSavedAt(Date.now());
-        writeCache(CACHE_KEY, fresh);
-      } catch (err: unknown) {
-        const error = err as Error;
-        toast(error.message || "Failed to load dashboard.", "error");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [toast]
-  );
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast(error.message || "Failed to load dashboard.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
-
-  const refresh = () => {
-    clearCache(CACHE_KEY);
-    load(true);
-  };
 
   const todayWeekday = getTodayWeekday();
   // Days in display order: today first, then the following six days.
@@ -88,14 +79,14 @@ export default function StudentDashboard() {
     );
   }
 
-  const { summary, notices } = data;
+  const { summary, notices, personal_notices: personalNotices } = data;
 
   // Build menu grid: organize slots by day
   const menuByDay: Record<number, Record<string, string>> = {};
   for (let d = 0; d < 7; d++) {
     menuByDay[d] = { breakfast: "", lunch: "", dinner: "" };
   }
-  data.menu.slots.forEach((slot) => {
+  menuSlots.forEach((slot) => {
     menuByDay[slot.day_of_week][slot.meal_type] = slot.description;
   });
 
@@ -104,17 +95,19 @@ export default function StudentDashboard() {
       <div className="flex justify-end -mb-4">
         <button
           type="button"
-          onClick={refresh}
+          onClick={load}
           className="text-[11px] text-text-muted hover:text-accent transition-colors"
           title="Reload notices, menu and wastage figures"
         >
-          {savedAt ? `Updated ${timeAgo(savedAt)} · Refresh` : "Refresh"}
+          Refresh
         </button>
       </div>
 
+      <NotificationsToggle variant="card" />
+
       {/* 1. Notice Board */}
       <section>
-        <NoticeBoard notices={notices} onChanged={refresh} />
+        <NoticeBoard notices={notices} personalNotices={personalNotices} onChanged={load} />
       </section>
 
       {/* 2. Menu for the coming days, starting today */}

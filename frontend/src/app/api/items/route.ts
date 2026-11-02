@@ -14,7 +14,7 @@ import { istToday } from "@/lib/server/dates";
 import { getDb } from "@/lib/server/db/client";
 import { extrasItems } from "@/lib/server/db/schema";
 import { handleRoute, json } from "@/lib/server/http";
-import { ensureRecurringItemsFresh } from "@/lib/server/jobs";
+import { ensureClosingRemindersFresh, ensureRecurringItemsFresh } from "@/lib/server/jobs";
 import { toItemResponse } from "@/lib/server/serializers";
 
 export const runtime = "nodejs";
@@ -23,6 +23,7 @@ export const dynamic = "force-dynamic";
 export const GET = handleRoute(async (req: NextRequest) => {
   await requireRole(req, "student");
   await ensureRecurringItemsFresh();
+  await ensureClosingRemindersFresh();
 
   const now = new Date();
   const today = istToday(now);

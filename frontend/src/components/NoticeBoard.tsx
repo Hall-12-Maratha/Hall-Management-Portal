@@ -3,13 +3,14 @@
 /**
  * Notice board. Fetches notices itself unless the parent passes them in
  * (`notices` prop), in which case it reports changes through `onChanged`.
+ * Student dashboards also pass `personalNotices`, shown first under "For you".
  */
 
 import React, { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/Toast";
-import type { NoticeResponse } from "@/types";
+import type { NoticeResponse, PersonalNotice } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 
 interface NoticeBoardProps {
@@ -17,9 +18,11 @@ interface NoticeBoardProps {
   notices?: NoticeResponse[];
   /** Called after a notice is posted or deleted (parent should refetch). */
   onChanged?: () => void;
+  /** Notices addressed to the viewing student (student dashboard only). */
+  personalNotices?: PersonalNotice[];
 }
 
-export default function NoticeBoard({ notices: external, onChanged }: NoticeBoardProps) {
+export default function NoticeBoard({ notices: external, onChanged, personalNotices = [] }: NoticeBoardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const controlled = external !== undefined;
@@ -139,6 +142,21 @@ export default function NoticeBoard({ notices: external, onChanged }: NoticeBoar
             Post Notice
           </button>
         </form>
+      )}
+
+      {personalNotices.length > 0 && (
+        <div className="space-y-3 mt-4">
+          <p className="text-xs font-semibold text-accent uppercase tracking-wider">For you</p>
+          {personalNotices.map((n) => (
+            <div key={`p-${n.id}`} className="p-4 bg-accent-bg rounded-xl border border-accent/40">
+              <h3 className="font-semibold text-text-primary mb-1">{n.title}</h3>
+              <p className="text-sm text-text-secondary whitespace-pre-wrap">{n.notice}</p>
+              <p className="text-xs text-text-muted mt-3 pt-3 border-t border-accent/20">
+                Hall office · {formatDateTime(n.created_at)}
+              </p>
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="space-y-3 mt-4">

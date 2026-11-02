@@ -4,7 +4,8 @@
 **Implementation:** `frontend/src/app/api/notices/route.ts`
 **FastAPI origin:** `backend/app/routers/notices.py::create_notice`
 
-Post a notice.
+Post a notice. Every subscribed student gets a push notification with the
+title and the first line of the description.
 
 ## Auth
 
@@ -36,6 +37,9 @@ Body (`application/json`):
 ## Side effects
 
 - Inserts a `notices` row with `created_by` = caller.
+- After the response, pushes `{title, body: first 120 chars of description}`
+  to every device of every active student (`lib/server/push.ts`); skipped
+  when VAPID keys are not configured.
 
 ## Business rules
 
@@ -43,4 +47,4 @@ Body (`application/json`):
 
 ## Changes vs FastAPI
 
-- None.
+- Push notification fan-out added.

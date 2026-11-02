@@ -1,5 +1,6 @@
 "use client";
 
+import NotificationsToggle from "@/components/pwa/NotificationsToggle";
 import PasswordInput from "@/components/ui/PasswordInput";
 import React, { useState } from "react";
 import { apiFetch } from "@/lib/api";
@@ -82,6 +83,8 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      <NotificationsToggle variant="row" />
 
       <div className="glass-card p-6 space-y-5 rounded-xl">
         <h2 className="text-sm font-bold text-text-secondary uppercase tracking-wider">

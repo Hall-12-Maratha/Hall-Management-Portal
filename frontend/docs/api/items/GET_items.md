@@ -27,6 +27,8 @@ No parameters.
 
 ## Side effects
 
+- May send the closing-soon push reminder (throttled to once per 5 minutes;
+  skipped when VAPID keys are not configured).
 - May first generate upcoming occurrences of weekly items (throttled to once
   per 15 minutes). Failures are logged and never affect the response.
 

@@ -14,8 +14,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // postgres.js and nodemailer are Node-only; keep them out of the bundler.
-  serverExternalPackages: ["postgres", "nodemailer"],
+  // postgres.js, nodemailer and web-push are Node-only; keep them out of the bundler.
+  serverExternalPackages: ["postgres", "nodemailer", "web-push"],
   poweredByHeader: false,
   async headers() {
     return [

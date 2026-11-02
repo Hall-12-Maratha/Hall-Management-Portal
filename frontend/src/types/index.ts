@@ -205,3 +205,35 @@ export interface NoticeResponse {
   created_at: string;
   created_by: number;
 }
+
+/** A notice addressed to the logged-in student (bill, warning, ...). */
+export interface PersonalNotice {
+  id: number;
+  title: string;
+  notice: string;
+  created_at: string;
+}
+
+/** Hall office view of a personal notice. */
+export interface PersonalNoticeAdmin extends PersonalNotice {
+  roll_no: string | null;
+  student_name: string;
+  created_by: number;
+}
+
+export interface PersonalNoticeUploadResponse {
+  count: number;
+  skipped: { row: number; roll_no: string; reason: string }[];
+  message: string;
+}
+
+// ─── Dashboard ─────────────────────────────────────────
+export interface DashboardPayload {
+  summary: DashboardSummary;
+  notices: NoticeResponse[];
+  personal_notices: PersonalNotice[];
+  menu_version: string;
+  /** null when the client's menu_version is still current. */
+  menu: { slots: MenuSlot[] } | null;
+  generated_at: string;
+}
