@@ -186,14 +186,33 @@ export default function StaffItemsPage() {
     }
   };
 
+  /** The weekly rule a generated occurrence came from, if it is in the list. */
+  const parentRuleOf = (item: ExtrasItem): ExtrasItem | undefined => {
+    if (item.is_recurring) return undefined;
+    const weekday = weekdayOf(item.date);
+    return items
+      .filter(
+        (r) =>
+          r.is_recurring &&
+          r.name === item.name &&
+          r.meal_type === item.meal_type &&
+          r.date < item.date &&
+          (r.recurring_weekday ?? weekdayOf(r.date)) === weekday
+      )
+      .sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  };
+
   const handleStop = async (item: ExtrasItem) => {
+    const partOfSeries = item.is_recurring || !!parentRuleOf(item);
     const msg = item.is_recurring
-      ? "Stop this weekly item? It and its upcoming weeks (with no bookings) will no longer appear for students. You can restart it later."
-      : "Deactivate this item? It will no longer appear for students. You can reactivate it later.";
+      ? "Stop this weekly item? It and all its upcoming weeks will no longer appear for students (unbooked weeks are removed). You can restart it later."
+      : partOfSeries
+        ? "Deactivate this item? It belongs to a weekly item, so the weekly item stops as well and this and all later weeks will no longer appear for students."
+        : "Deactivate this item? It will no longer appear for students. You can reactivate it later.";
     if (!confirm(msg)) return;
     try {
-      await apiFetch(`/staff/items/${item.id}`, { method: "DELETE" });
-      toast(item.is_recurring ? "Weekly item stopped." : "Item deactivated.", "success");
+      const res = await apiFetch<{ message: string }>(`/staff/items/${item.id}`, { method: "DELETE" });
+      toast(res.message || (item.is_recurring ? "Weekly item stopped." : "Item deactivated."), "success");
       fetchItems();
     } catch (err: unknown) {
       const error = err as Error;
@@ -213,10 +232,14 @@ export default function StaffItemsPage() {
   };
 
   const handlePermanentDelete = async (item: ExtrasItem) => {
-    if (!confirm(`Permanently delete "${item.name}" (${item.date})? This cannot be undone.`)) return;
+    const seriesNote =
+      item.is_recurring || parentRuleOf(item)
+        ? " This also stops the weekly item: this and all later weeks are removed (booked weeks are hidden instead)."
+        : "";
+    if (!confirm(`Permanently delete "${item.name}" (${item.date})? This cannot be undone.${seriesNote}`)) return;
     try {
-      await apiFetch(`/staff/items/${item.id}?permanent=true`, { method: "DELETE" });
-      toast("Item deleted permanently.", "success");
+      const res = await apiFetch<{ message: string }>(`/staff/items/${item.id}?permanent=true`, { method: "DELETE" });
+      toast(res.message || "Item deleted permanently.", "success");
       fetchItems();
     } catch (err: unknown) {
       const error = err as Error;

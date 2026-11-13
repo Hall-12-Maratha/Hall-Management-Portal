@@ -6,6 +6,9 @@
  * DELETE /api/staff/items/{item_id}            - stop / deactivate (soft).
  * DELETE /api/staff/items/{item_id}?permanent=true - remove the row for good;
  *        refused while the item has bookings.
+ *        Either form ends the weekly series the item belongs to, from that
+ *        item on: the rule stops, later unbooked occurrences are removed and
+ *        later booked occurrences are hidden (see lib/server/extras.ts).
  * Port of routers/staff.py::update_item / delete_item.
  */
 
@@ -22,6 +25,8 @@ import {
   countBookings,
   deleteFutureUnbookedOccurrences,
   propagateRuleEdit,
+  stopSeries,
+  type StopSeriesResult,
 } from "@/lib/server/extras";
 import { handleRoute, httpError, json, message, parseIntParam, parseJsonBody } from "@/lib/server/http";
 import { recreateRecurringItems } from "@/lib/server/jobs";
@@ -106,6 +111,16 @@ export const PUT = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
   return json(toItemResponse(updated));
 });
 
+/** Human-readable outcome of a delete, for the staff toast. */
+function describeStop(verb: string, series: StopSeriesResult, isRule: boolean): string {
+  const parts: string[] = [];
+  if (series.rule && !isRule) parts.push("its weekly item stopped");
+  if (series.removed > 0) parts.push(`${series.removed} upcoming week${series.removed === 1 ? "" : "s"} removed`);
+  if (series.hidden > 0) parts.push(`${series.hidden} booked week${series.hidden === 1 ? "" : "s"} hidden`);
+  const head = isRule ? `Weekly item ${verb}.` : `Item ${verb}.`;
+  return parts.length ? `${head} Also ${parts.join(", ")}.` : head;
+}
+
 export const DELETE = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
   await requireRole(req, "mess_staff");
   const { id } = await ctx.params;
@@ -123,30 +138,20 @@ export const DELETE = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
         `This item has ${bookings} booking${bookings === 1 ? "" : "s"} and cannot be deleted. Stop it instead, or clear its bookings first.`
       );
     }
-    if (item.isRecurring) {
-      await deleteFutureUnbookedOccurrences(db, item);
-    }
+    // End the series first (while the item row still anchors the lookup),
+    // then drop the row itself.
+    const series = await stopSeries(db, item, { permanent: true });
     await db.delete(extrasItems).where(eq(extrasItems.id, item.id));
-    return message("Item deleted permanently.");
+    return message(describeStop("deleted permanently", series, item.isRecurring));
   }
 
   // Soft delete: keep booking history intact.
-  const [updated] = await db
-    .update(extrasItems)
-    .set({ isActive: false })
-    .where(eq(extrasItems.id, item.id))
-    .returning();
+  await db.update(extrasItems).set({ isActive: false }).where(eq(extrasItems.id, item.id));
 
-  // A stopped weekly rule: hard-delete its unbooked upcoming occurrences so
-  // the recurring-items job cannot regenerate them (the job skips dates that
-  // already exist in the DB, so a deactivated clone would suppress a future
-  // regeneration even after the rule is gone – but hard-deleting is cleaner).
-  // For recurring items we also propagate isActive: false to any occurrence
-  // that already has bookings (so it no longer appears in the student browse).
-  if (item.isRecurring) {
-    await deleteFutureUnbookedOccurrences(db, item);
-    await propagateRuleEdit(db, item, updated);
-  }
+  // Deleting any item of a weekly series ends the series from here on.
+  // Otherwise the still-active rule makes the recurring-items job recreate
+  // this very row on its next lazy run.
+  const series = await stopSeries(db, item);
 
-  return message("Item deactivated.");
+  return message(describeStop(item.isRecurring ? "stopped" : "deactivated", series, item.isRecurring));
 });

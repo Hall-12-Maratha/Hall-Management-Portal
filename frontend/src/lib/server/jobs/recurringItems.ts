@@ -35,13 +35,14 @@ export async function recreateRecurringItems(db: Db = getDb()): Promise<number> 
     .where(and(eq(extrasItems.isRecurring, true), eq(extrasItems.isActive, true)));
   if (rules.length === 0) return 0;
 
-  // Only active rows in the horizon: existing active occurrences are never
-  // duplicated; deactivated rows are ignored so a reactivated rule can
-  // regenerate its upcoming occurrences cleanly.
+  // Every row (active or not) in the horizon: an existing occurrence is never
+  // duplicated, so a deactivated week stays deactivated instead of being
+  // recreated by the next run. (Stopping a series hard-deletes the unbooked
+  // weeks and deactivates the rule, so nothing is left to regenerate.)
   const existing = await db
     .select({ name: extrasItems.name, mealType: extrasItems.mealType, date: extrasItems.date })
     .from(extrasItems)
-    .where(and(eq(extrasItems.isActive, true), gte(extrasItems.date, today), lte(extrasItems.date, horizonEnd)));
+    .where(and(gte(extrasItems.date, today), lte(extrasItems.date, horizonEnd)));
   const present = new Set(existing.map((row) => `${row.name}|${row.mealType}|${row.date}`));
 
   const clones: NewExtrasItemRow[] = [];
