@@ -18,16 +18,27 @@ export function computePrepTime(opensAt: Date, closesAt: Date): number {
 }
 
 /**
- * Upcoming occurrences generated from a weekly rule that nobody has booked yet:
- * same name and meal as the rule, dated after the rule's own date, not
- * themselves rules. Used to propagate edits and deactivation.
+ * All upcoming occurrences generated from a weekly rule (regardless of
+ * booking status): same name and meal, dated after the rule's own date,
+ * not themselves rules.
  */
-function futureUnbookedOccurrences(rule: Pick<ExtrasItemRow, "name" | "mealType" | "date">) {
+function futureOccurrences(rule: Pick<ExtrasItemRow, "name" | "mealType" | "date">) {
   return and(
     eq(extrasItems.isRecurring, false),
     eq(extrasItems.name, rule.name),
     eq(extrasItems.mealType, rule.mealType),
-    gt(extrasItems.date, rule.date),
+    gt(extrasItems.date, rule.date)
+  );
+}
+
+/**
+ * Upcoming occurrences generated from a weekly rule that nobody has booked yet:
+ * same name and meal as the rule, dated after the rule's own date, not
+ * themselves rules. Used to propagate edits and hard-deletion.
+ */
+function futureUnbookedOccurrences(rule: Pick<ExtrasItemRow, "name" | "mealType" | "date">) {
+  return and(
+    futureOccurrences(rule),
     sql`not exists (select 1 from ${extrasBookings} where ${extrasBookings.itemId} = ${extrasItems.id} and ${extrasBookings.status} <> 'cancelled')`
   );
 }
@@ -36,16 +47,29 @@ function futureUnbookedOccurrences(rule: Pick<ExtrasItemRow, "name" | "mealType"
  * After a weekly rule is edited, bring its upcoming unbooked occurrences in
  * line (name, price, close time of day, active flag). Occurrences with
  * bookings keep the terms students booked under.
+ *
+ * When propagating a deactivation (after.isActive = false), ALL occurrences
+ * (booked or not) are hidden from the student browse by setting isActive=false.
  */
 export async function propagateRuleEdit(
   db: Db,
   before: ExtrasItemRow,
   after: ExtrasItemRow
 ): Promise<number> {
+  const isDeactivation = !after.isActive;
+
+  // For deactivations: apply isActive=false to ALL child occurrences (even
+  // booked ones) so they disappear from the student browse immediately.
+  // For regular edits: only touch unbooked occurrences (booked ones keep the
+  // terms students agreed to).
+  const whereClause = isDeactivation
+    ? futureOccurrences(before)
+    : futureUnbookedOccurrences(before);
+
   const targets = await db
     .select({ id: extrasItems.id, date: extrasItems.date })
     .from(extrasItems)
-    .where(futureUnbookedOccurrences(before));
+    .where(whereClause);
 
   for (const target of targets) {
     const closesAt = combineDateWithUtcTime(target.date, after.closesAt);

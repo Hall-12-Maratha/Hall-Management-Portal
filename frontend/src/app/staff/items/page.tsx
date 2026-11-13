@@ -327,8 +327,7 @@ export default function StaffItemsPage() {
                     key={r}
                     type="button"
                     onClick={() => setFormRepeat(r)}
-                    disabled={!!editingId}
-                    className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 ${
+                    className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                       formRepeat === r ? "bg-accent text-white" : "text-text-secondary hover:text-text-primary"
                     }`}
                   >
@@ -336,13 +335,32 @@ export default function StaffItemsPage() {
                   </button>
                 ))}
               </div>
+              {editingId && (() => {
+                const editing = items.find((i) => i.id === editingId);
+                const originalRepeat = editing?.is_recurring ? "weekly" : "once";
+                if (originalRepeat !== formRepeat) {
+                  return (
+                    <p className="text-xs text-warning mt-1">
+                      {formRepeat === "weekly"
+                        ? "Switching to weekly will make this item repeat every week on the selected day."
+                        : "Switching to one-time will stop future weekly occurrences (unbooked ones will be removed)."}
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
-            {formRepeat === "weekly" ? (
+            {formRepeat === "weekly" && (
               <div>
                 <label className="block text-xs text-text-secondary mb-1">Day of week</label>
                 <select
                   value={formWeekday}
-                  onChange={(e) => setFormWeekday(Number(e.target.value))}
+                  onChange={(e) => {
+                    const d = Number(e.target.value);
+                    setFormWeekday(d);
+                    // Keep the service date in sync with the chosen weekday
+                    setFormDate(nextDateForWeekday(d, formCloses, todayIst));
+                  }}
                   className={inputClass}
                 >
                   {WEEKDAYS.map((d) => (
@@ -352,12 +370,23 @@ export default function StaffItemsPage() {
                   ))}
                 </select>
               </div>
-            ) : (
-              <div>
-                <label className="block text-xs text-text-secondary mb-1">Service date</label>
-                <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className={inputClass} required />
-              </div>
             )}
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Service date</label>
+              <input
+                type="date"
+                value={formDate}
+                onChange={(e) => {
+                  setFormDate(e.target.value);
+                  if (formRepeat === "weekly") {
+                    // Keep weekday in sync when date is manually changed
+                    setFormWeekday(weekdayOf(e.target.value));
+                  }
+                }}
+                className={inputClass}
+                required
+              />
+            </div>
             <div>
               <label className="block text-xs text-text-secondary mb-1">Booking closes at</label>
               <input type="time" value={formCloses} onChange={(e) => setFormCloses(e.target.value)} className={inputClass} required />

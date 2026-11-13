@@ -137,8 +137,14 @@ export const DELETE = handleRoute<Ctx>(async (req: NextRequest, ctx) => {
     .where(eq(extrasItems.id, item.id))
     .returning();
 
-  // A stopped weekly rule takes its unbooked upcoming occurrences with it.
+  // A stopped weekly rule: hard-delete its unbooked upcoming occurrences so
+  // the recurring-items job cannot regenerate them (the job skips dates that
+  // already exist in the DB, so a deactivated clone would suppress a future
+  // regeneration even after the rule is gone – but hard-deleting is cleaner).
+  // For recurring items we also propagate isActive: false to any occurrence
+  // that already has bookings (so it no longer appears in the student browse).
   if (item.isRecurring) {
+    await deleteFutureUnbookedOccurrences(db, item);
     await propagateRuleEdit(db, item, updated);
   }
 
